@@ -37,6 +37,29 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
 
   String lastCategory = 'Genel';
 
+  bool get _canUseOcr {
+    final imagePath = widget.session.selectedImagePath;
+    return !kIsWeb &&
+        !isReadingImageText &&
+        imagePath != null &&
+        imagePath.trim().isNotEmpty;
+  }
+
+  String get _ocrButtonLabel {
+    if (kIsWeb) return 'OCR Android testinde çalışır';
+    return 'Fotoğraftan metni oku';
+  }
+
+  String? get _ocrHelpText {
+    if (kIsWeb) {
+      return 'Chrome/web ekranında OCR desteklenmez. Webde metni elle yapıştırıp taslak oluşturabilirsiniz.';
+    }
+    if (!_canUseOcr && !isReadingImageText) {
+      return 'OCR için Android cihazda dosya yolu olan bir fotoğraf seçilmelidir.';
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -281,8 +304,10 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                               onBuildDrafts: _buildDraftsFromCandidateText,
                               onApplyToActiveDraft:
                                   _applyCandidateToActiveDraft,
-                              canReadImageText: !isReadingImageText,
+                              canReadImageText: _canUseOcr,
                               isReadingImageText: isReadingImageText,
+                              ocrButtonLabel: _ocrButtonLabel,
+                              ocrHelpText: _ocrHelpText,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -308,8 +333,10 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                             onReadImageText: _readImageText,
                             onBuildDrafts: _buildDraftsFromCandidateText,
                             onApplyToActiveDraft: _applyCandidateToActiveDraft,
-                            canReadImageText: !isReadingImageText,
+                            canReadImageText: _canUseOcr,
                             isReadingImageText: isReadingImageText,
+                            ocrButtonLabel: _ocrButtonLabel,
+                            ocrHelpText: _ocrHelpText,
                           ),
                           const SizedBox(height: 14),
                           Expanded(child: _draftList()),
@@ -416,6 +443,8 @@ class _ReferenceColumn extends StatelessWidget {
   final bool canBuildDrafts;
   final bool canReadImageText;
   final bool isReadingImageText;
+  final String ocrButtonLabel;
+  final String? ocrHelpText;
 
   const _ReferenceColumn({
     required this.bytes,
@@ -429,6 +458,8 @@ class _ReferenceColumn extends StatelessWidget {
     required this.canBuildDrafts,
     required this.canReadImageText,
     required this.isReadingImageText,
+    required this.ocrButtonLabel,
+    required this.ocrHelpText,
   });
 
   @override
@@ -444,6 +475,8 @@ class _ReferenceColumn extends StatelessWidget {
           canBuildDrafts: canBuildDrafts,
           canReadImageText: canReadImageText,
           isReadingImageText: isReadingImageText,
+          ocrButtonLabel: ocrButtonLabel,
+          ocrHelpText: ocrHelpText,
           onTextChanged: onTextChanged,
           onReadImageText: onReadImageText,
           onBuildDrafts: onBuildDrafts,

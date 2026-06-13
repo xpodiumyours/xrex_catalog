@@ -13,6 +13,8 @@ class XRexTextCandidatePanel extends StatelessWidget {
   final bool canBuildDrafts;
   final bool canReadImageText;
   final bool isReadingImageText;
+  final String ocrButtonLabel;
+  final String? ocrHelpText;
 
   const XRexTextCandidatePanel({
     super.key,
@@ -26,6 +28,8 @@ class XRexTextCandidatePanel extends StatelessWidget {
     required this.canBuildDrafts,
     required this.canReadImageText,
     required this.isReadingImageText,
+    required this.ocrButtonLabel,
+    this.ocrHelpText,
   });
 
   @override
@@ -81,12 +85,21 @@ class XRexTextCandidatePanel extends StatelessWidget {
                       )
                       : const Icon(Icons.document_scanner_outlined),
               label: Text(
-                isReadingImageText
-                    ? 'Fotoğraf okunuyor'
-                    : 'Fotoğraftan metni oku',
+                isReadingImageText ? 'Fotoğraf okunuyor' : ocrButtonLabel,
               ),
             ),
           ),
+          if (ocrHelpText != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              ocrHelpText!,
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
