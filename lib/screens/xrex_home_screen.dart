@@ -46,6 +46,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
 
   String selectedBusinessType = businessTypes.first;
   Uint8List? selectedImageBytes;
+  String? selectedImagePath;
   bool isPicking = false;
 
   Future<void> _pickImage() async {
@@ -67,6 +68,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
 
       setState(() {
         selectedImageBytes = bytes;
+        selectedImagePath = result?.files.single.path;
         isPicking = false;
       });
     } catch (error) {
@@ -91,6 +93,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
       sessionId: DateTime.now().microsecondsSinceEpoch.toString(),
       businessType: selectedBusinessType,
       selectedImageBytes: imageBytes,
+      selectedImagePath: selectedImagePath,
       products: const [],
     );
 

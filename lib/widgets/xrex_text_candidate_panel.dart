@@ -8,8 +8,11 @@ class XRexTextCandidatePanel extends StatelessWidget {
   final ValueChanged<String> onTextChanged;
   final ValueChanged<XRexTextCandidate> onApplyToActiveDraft;
   final VoidCallback onBuildDrafts;
+  final VoidCallback onReadImageText;
   final bool hasDraft;
   final bool canBuildDrafts;
+  final bool canReadImageText;
+  final bool isReadingImageText;
 
   const XRexTextCandidatePanel({
     super.key,
@@ -18,8 +21,11 @@ class XRexTextCandidatePanel extends StatelessWidget {
     required this.onTextChanged,
     required this.onApplyToActiveDraft,
     required this.onBuildDrafts,
+    required this.onReadImageText,
     required this.hasDraft,
     required this.canBuildDrafts,
+    required this.canReadImageText,
+    required this.isReadingImageText,
   });
 
   @override
@@ -62,6 +68,26 @@ class XRexTextCandidatePanel extends StatelessWidget {
             onChanged: onTextChanged,
           ),
           const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: canReadImageText ? onReadImageText : null,
+              icon:
+                  isReadingImageText
+                      ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.document_scanner_outlined),
+              label: Text(
+                isReadingImageText
+                    ? 'Fotoğraf okunuyor'
+                    : 'Fotoğraftan metni oku',
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(

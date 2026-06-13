@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/xrex_catalog_session.dart';
@@ -7,6 +6,7 @@ import '../models/xrex_draft_product.dart';
 import '../models/xrex_parsed_product.dart';
 import '../models/xrex_text_candidate.dart';
 import '../screens/xrex_review_screen.dart';
+import '../services/xrex_ocr_service.dart';
 import '../services/xrex_text_parser_service.dart';
 import '../widgets/xrex_text_candidate_panel.dart';
 import '../widgets/xrex_draft_product_card.dart';
@@ -29,9 +29,11 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   final Map<String, FocusNode> priceFocusNodes = {};
   final Map<String, FocusNode> descriptionFocusNodes = {};
   final TextEditingController candidateTextController = TextEditingController();
+  final XRexOcrService ocrService = const XRexOcrService();
   final XRexTextParserService textParserService = const XRexTextParserService();
   List<XRexTextCandidate> textCandidates = [];
   String? activeDraftId;
+  bool isReadingImageText = false;
 
   String lastCategory = 'Genel';
 
@@ -65,6 +67,54 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
     setState(() {
       textCandidates = textParserService.parse(value);
     });
+  }
+
+  Future<void> _readImageText() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('OCR webde desteklenmez. Android testinde çalışır.'),
+        ),
+      );
+      return;
+    }
+
+    final imagePath = widget.session.selectedImagePath;
+    if (imagePath == null || imagePath.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('OCR için fotoğraf dosya yolu bulunamadı.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => isReadingImageText = true);
+    try {
+      final text = await ocrService.readTextFromImagePath(imagePath);
+      if (!mounted) return;
+      if (text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fotoğrafta okunabilir metin bulunamadı.'),
+          ),
+        );
+        return;
+      }
+
+      candidateTextController.text = text;
+      _parseCandidateText(text);
+      _buildDraftsFromCandidateText();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('OCR okuma hatası: $error')));
+    } finally {
+      if (mounted) {
+        setState(() => isReadingImageText = false);
+      }
+    }
   }
 
   void _applyCandidateToActiveDraft(XRexTextCandidate candidate) {
@@ -227,9 +277,12 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                                       .trim()
                                       .isNotEmpty,
                               onTextChanged: _parseCandidateText,
+                              onReadImageText: _readImageText,
                               onBuildDrafts: _buildDraftsFromCandidateText,
                               onApplyToActiveDraft:
                                   _applyCandidateToActiveDraft,
+                              canReadImageText: !isReadingImageText,
+                              isReadingImageText: isReadingImageText,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -252,8 +305,11 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                             canBuildDrafts:
                                 candidateTextController.text.trim().isNotEmpty,
                             onTextChanged: _parseCandidateText,
+                            onReadImageText: _readImageText,
                             onBuildDrafts: _buildDraftsFromCandidateText,
                             onApplyToActiveDraft: _applyCandidateToActiveDraft,
+                            canReadImageText: !isReadingImageText,
+                            isReadingImageText: isReadingImageText,
                           ),
                           const SizedBox(height: 14),
                           Expanded(child: _draftList()),
@@ -355,8 +411,11 @@ class _ReferenceColumn extends StatelessWidget {
   final ValueChanged<String> onTextChanged;
   final ValueChanged<XRexTextCandidate> onApplyToActiveDraft;
   final VoidCallback onBuildDrafts;
+  final VoidCallback onReadImageText;
   final bool hasDraft;
   final bool canBuildDrafts;
+  final bool canReadImageText;
+  final bool isReadingImageText;
 
   const _ReferenceColumn({
     required this.bytes,
@@ -365,8 +424,11 @@ class _ReferenceColumn extends StatelessWidget {
     required this.onTextChanged,
     required this.onApplyToActiveDraft,
     required this.onBuildDrafts,
+    required this.onReadImageText,
     required this.hasDraft,
     required this.canBuildDrafts,
+    required this.canReadImageText,
+    required this.isReadingImageText,
   });
 
   @override
@@ -380,7 +442,10 @@ class _ReferenceColumn extends StatelessWidget {
           candidates: candidates,
           hasDraft: hasDraft,
           canBuildDrafts: canBuildDrafts,
+          canReadImageText: canReadImageText,
+          isReadingImageText: isReadingImageText,
           onTextChanged: onTextChanged,
+          onReadImageText: onReadImageText,
           onBuildDrafts: onBuildDrafts,
           onApplyToActiveDraft: onApplyToActiveDraft,
         ),
