@@ -34,6 +34,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   List<XRexTextCandidate> textCandidates = [];
   String? activeDraftId;
   bool isReadingImageText = false;
+  String? autoCatalogMessage;
+  bool isAutoCatalogError = false;
 
   String lastCategory = 'Genel';
 
@@ -89,6 +91,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   void _parseCandidateText(String value) {
     setState(() {
       textCandidates = textParserService.parse(value);
+      autoCatalogMessage = null;
+      isAutoCatalogError = false;
     });
   }
 
@@ -170,11 +174,11 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
     );
 
     if (parsedProducts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ürün taslağına dönüşecek fiyatlı satır bulunamadı.'),
-        ),
-      );
+      setState(() {
+        autoCatalogMessage =
+            'Ürün taslağına dönüşecek fiyatlı satır bulunamadı.';
+        isAutoCatalogError = true;
+      });
       return;
     }
 
@@ -183,10 +187,12 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
       targetIndex += 1;
     }
 
+    var createdCount = 0;
     for (final parsed in parsedProducts) {
       if (targetIndex < products.length) {
         _fillDraft(products[targetIndex], parsed);
         targetIndex += 1;
+        createdCount += 1;
         continue;
       }
 
@@ -195,10 +201,18 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
       _ensureControllers(draft);
       _fillDraft(draft, parsed);
       targetIndex += 1;
+      createdCount += 1;
     }
 
     activeDraftId = products.isEmpty ? null : products.last.id;
-    setState(() {});
+    final warningCount = products.expand(_productWarnings).length;
+    setState(() {
+      autoCatalogMessage =
+          warningCount == 0
+              ? '$createdCount ürün taslağı oluşturuldu.'
+              : '$createdCount ürün taslağı oluşturuldu. Eksik alanları kartlarda kontrol edin.';
+      isAutoCatalogError = false;
+    });
   }
 
   void _fillDraft(XRexDraftProduct draft, XRexParsedProduct parsed) {
@@ -311,6 +325,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                               isReadingImageText: isReadingImageText,
                               ocrButtonLabel: _ocrButtonLabel,
                               ocrHelpText: _ocrHelpText,
+                              autoCatalogMessage: autoCatalogMessage,
+                              isAutoCatalogError: isAutoCatalogError,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -340,6 +356,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                             isReadingImageText: isReadingImageText,
                             ocrButtonLabel: _ocrButtonLabel,
                             ocrHelpText: _ocrHelpText,
+                            autoCatalogMessage: autoCatalogMessage,
+                            isAutoCatalogError: isAutoCatalogError,
                           ),
                           const SizedBox(height: 14),
                           Expanded(child: _draftList()),
@@ -374,9 +392,11 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                 onChanged: (changed) {
                   lastCategory = changed.category;
                   activeDraftId = changed.id;
+                  setState(() {});
                 },
                 onDuplicate: () => _addDraft(source: product),
                 onRemove: () => _removeDraft(product.id),
+                warnings: _productWarnings(product),
               );
             },
           ),
@@ -407,6 +427,23 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
         ),
       ],
     );
+  }
+
+  List<String> _productWarnings(XRexDraftProduct product) {
+    final warnings = <String>[];
+    if (product.name.trim().isEmpty) {
+      warnings.add('Ürün adı eksik');
+    }
+    if (product.price.trim().isEmpty) {
+      warnings.add('Fiyat eksik');
+    } else if (!_hasParseablePrice(product.price)) {
+      warnings.add('Fiyat kontrol edilmeli');
+    }
+    return warnings;
+  }
+
+  bool _hasParseablePrice(String price) {
+    return RegExp(r'\d{1,9}(?:[.,]\d{1,2})?').hasMatch(price);
   }
 
   @override
@@ -448,6 +485,8 @@ class _ReferenceColumn extends StatelessWidget {
   final bool isReadingImageText;
   final String ocrButtonLabel;
   final String? ocrHelpText;
+  final String? autoCatalogMessage;
+  final bool isAutoCatalogError;
 
   const _ReferenceColumn({
     required this.bytes,
@@ -463,6 +502,8 @@ class _ReferenceColumn extends StatelessWidget {
     required this.isReadingImageText,
     required this.ocrButtonLabel,
     required this.ocrHelpText,
+    required this.autoCatalogMessage,
+    required this.isAutoCatalogError,
   });
 
   @override
@@ -480,6 +521,8 @@ class _ReferenceColumn extends StatelessWidget {
           isReadingImageText: isReadingImageText,
           ocrButtonLabel: ocrButtonLabel,
           ocrHelpText: ocrHelpText,
+          autoCatalogMessage: autoCatalogMessage,
+          isAutoCatalogError: isAutoCatalogError,
           onTextChanged: onTextChanged,
           onReadImageText: onReadImageText,
           onBuildDrafts: onBuildDrafts,

@@ -14,6 +14,7 @@ class XRexDraftProductCard extends StatelessWidget {
   final ValueChanged<XRexDraftProduct> onChanged;
   final VoidCallback onDuplicate;
   final VoidCallback onRemove;
+  final List<String> warnings;
 
   const XRexDraftProductCard({
     super.key,
@@ -28,6 +29,7 @@ class XRexDraftProductCard extends StatelessWidget {
     required this.onChanged,
     required this.onDuplicate,
     required this.onRemove,
+    this.warnings = const [],
   });
 
   static const List<String> categories = [
@@ -86,6 +88,17 @@ class XRexDraftProductCard extends StatelessWidget {
               ),
             ],
           ),
+          if (warnings.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  warnings
+                      .map((warning) => _WarningChip(label: warning))
+                      .toList(),
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: nameController,
@@ -171,6 +184,43 @@ class XRexDraftProductCard extends StatelessWidget {
               product.stockStatus = value;
               onChanged(product);
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WarningChip extends StatelessWidget {
+  final String label;
+
+  const _WarningChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B1D0A),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFF97316)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFF97316),
+            size: 14,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFFED7AA),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),

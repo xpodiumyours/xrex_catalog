@@ -15,6 +15,8 @@ class XRexTextCandidatePanel extends StatelessWidget {
   final bool isReadingImageText;
   final String ocrButtonLabel;
   final String? ocrHelpText;
+  final String? autoCatalogMessage;
+  final bool isAutoCatalogError;
 
   const XRexTextCandidatePanel({
     super.key,
@@ -30,6 +32,8 @@ class XRexTextCandidatePanel extends StatelessWidget {
     required this.isReadingImageText,
     required this.ocrButtonLabel,
     this.ocrHelpText,
+    this.autoCatalogMessage,
+    this.isAutoCatalogError = false,
   });
 
   @override
@@ -109,6 +113,13 @@ class XRexTextCandidatePanel extends StatelessWidget {
               label: const Text('Metni taslaklara dönüştür'),
             ),
           ),
+          if (autoCatalogMessage != null) ...[
+            const SizedBox(height: 10),
+            _AutoCatalogStatus(
+              message: autoCatalogMessage!,
+              isError: isAutoCatalogError,
+            ),
+          ],
           const SizedBox(height: 12),
           if (candidates.isEmpty)
             const Text(
@@ -146,6 +157,51 @@ class XRexTextCandidatePanel extends StatelessWidget {
                     );
                   }).toList(),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AutoCatalogStatus extends StatelessWidget {
+  final String message;
+  final bool isError;
+
+  const _AutoCatalogStatus({required this.message, required this.isError});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? const Color(0xFFF97316) : const Color(0xFF06B6D4);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError
+                ? Icons.warning_amber_rounded
+                : Icons.check_circle_outline_rounded,
+            color: color,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color:
+                    isError ? const Color(0xFFFED7AA) : const Color(0xFFA5F3FC),
+                fontSize: 12,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
