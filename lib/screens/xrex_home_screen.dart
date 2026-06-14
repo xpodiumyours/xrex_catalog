@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/xrex_catalog_session.dart';
 import '../screens/xrex_import_screen.dart';
 import '../widgets/photo_picker_zone.dart';
+import '../widgets/xrex_glass_panel.dart';
 
 class XRexHomeScreen extends StatefulWidget {
   const XRexHomeScreen({super.key});
@@ -104,63 +105,66 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 900;
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child:
-                      isWide
-                          ? Row(
-                            children: [
-                              Expanded(
-                                child: _HeroPanel(onStart: _startImport),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(child: _setupPanel()),
-                            ],
-                          )
-                          : ListView(
-                            children: [
-                              _HeroPanel(onStart: _startImport),
-                              const SizedBox(height: 18),
-                              _setupPanel(),
-                            ],
-                          ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.35,
+            colors: [Color(0xFF10213A), Color(0xFF050711)],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 900;
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child:
+                        isWide
+                            ? Row(
+                              children: [
+                                Expanded(
+                                  child: _HeroPanel(onStart: _startImport),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(child: _setupPanel()),
+                              ],
+                            )
+                            : ListView(
+                              children: [
+                                _HeroPanel(onStart: _startImport),
+                                const SizedBox(height: 18),
+                                _setupPanel(),
+                              ],
+                            ),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   Widget _setupPanel() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1728),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFF1F2A3D)),
-      ),
+    return XRexGlassPanel(
+      padding: const EdgeInsets.all(22),
+      strongGlow: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'İşletme türünü seçin',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
+          const XRexSectionHeader(
+            icon: Icons.tune_rounded,
+            eyebrow: 'MISSION PROFILE',
+            title: 'İşletme türünü seçin',
+            trailing: 'DRAFT',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -174,6 +178,13 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
                       setState(() => selectedBusinessType = type);
                     },
                     selectedColor: const Color(0xFF06B6D4),
+                    backgroundColor: const Color(0xFF0B1220),
+                    side: BorderSide(
+                      color:
+                          selected
+                              ? const Color(0xFF67E8F9)
+                              : const Color(0xFF334155),
+                    ),
                     labelStyle: TextStyle(
                       color: selected ? const Color(0xFF04111D) : Colors.white,
                       fontWeight: FontWeight.w700,
@@ -224,17 +235,10 @@ class _HeroPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF101A2E), Color(0xFF0B1020)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFF263349)),
-      ),
+    return XRexGlassPanel(
+      padding: const EdgeInsets.all(28),
+      radius: 30,
+      strongGlow: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -242,11 +246,20 @@ class _HeroPanel extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF22D3EE), Color(0xFF0EA5E9)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x6606B6D4),
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.auto_awesome_rounded,
@@ -254,12 +267,47 @@ class _HeroPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'X-rex',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'X-rex',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'ORBITAL CATALOG ENGINE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF67E8F9),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF062D3B),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0x6606B6D4)),
+                ),
+                child: const Text(
+                  'LOCAL ONLY',
+                  style: TextStyle(
+                    color: Color(0xFF67E8F9),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -276,7 +324,7 @@ class _HeroPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            'Raf, reyon, çoklu ürün fotoğrafı veya e-ticaret ekran görüntüsünü referans alın. Ürünleri manuel girin, son ekranda temiz JSON çıktısı alın.',
+            'Raf, reyon, çoklu ürün fotoğrafı veya e-ticaret ekran görüntüsünü referans alın. Ürünleri taslak karta dönüştürün, son ekranda master JSON çıktısı alın.',
             style: TextStyle(
               fontSize: 15,
               height: 1.55,
@@ -290,8 +338,8 @@ class _HeroPanel extends StatelessWidget {
             children: [
               _RuleChip(label: 'API yok'),
               _RuleChip(label: 'Backend yok'),
-              _RuleChip(label: 'OCR yok'),
-              _RuleChip(label: 'Tamamen yerel'),
+              _RuleChip(label: 'Web manuel'),
+              _RuleChip(label: 'Android OCR hazır'),
             ],
           ),
           const SizedBox(height: 26),
@@ -299,6 +347,11 @@ class _HeroPanel extends StatelessWidget {
             onPressed: onStart,
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text('Başla'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF22D3EE),
+              side: const BorderSide(color: Color(0xFF155E75)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            ),
           ),
         ],
       ),
