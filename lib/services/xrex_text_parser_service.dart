@@ -63,47 +63,93 @@ class XRexTextParserService {
   }
 
   List<XRexParsedProduct> parseProducts(String rawText) {
-    final lines =
-        rawText
-            .split(RegExp(r'\r?\n'))
-            .map((line) => line.trim())
-            .where((line) => line.isNotEmpty)
-            .toList();
+    final lines = _cleanLines(rawText);
     if (lines.isEmpty) return const [];
 
     final products = <XRexParsedProduct>[];
-    XRexParsedProduct? pending;
+    final nameBuffer = <String>[];
+    XRexParsedProduct? pendingProduct;
 
-    for (final line in lines) {
+    for (var index = 0; index < lines.length; index += 1) {
+      final line = lines[index];
       final priceMatch = _pricePattern.firstMatch(line);
       if (priceMatch == null) {
-        if (pending != null && pending.description.trim().isEmpty) {
-          pending = XRexParsedProduct(
-            name: pending.name,
-            price: pending.price,
+        if (_isNoiseLine(line)) continue;
+
+        if (pendingProduct != null && pendingProduct.description.isEmpty) {
+          final nextLine = index + 1 < lines.length ? lines[index + 1] : null;
+          final nextLineHasPrice =
+              nextLine != null && _pricePattern.hasMatch(nextLine);
+          if (nextLineHasPrice) {
+            products.add(pendingProduct);
+            pendingProduct = null;
+            nameBuffer
+              ..clear()
+              ..add(line);
+            continue;
+          }
+
+          pendingProduct = XRexParsedProduct(
+            name: pendingProduct.name,
+            price: pendingProduct.price,
             description: line,
           );
+          continue;
+        }
+
+        nameBuffer.add(line);
+        if (nameBuffer.length > 2) {
+          nameBuffer.removeAt(0);
         }
         continue;
       }
 
-      if (pending != null) {
-        products.add(pending);
+      if (pendingProduct != null) {
+        products.add(pendingProduct);
+        pendingProduct = null;
       }
 
       final price = priceMatch.group(0)?.trim() ?? '';
-      final name = line.replaceFirst(_pricePattern, '').trim();
-      pending = XRexParsedProduct(
-        name: name.isEmpty ? 'İsimsiz ürün' : name,
+      final sameLineName = line.replaceFirst(_pricePattern, '').trim();
+      final name = _buildName(sameLineName, nameBuffer);
+      pendingProduct = XRexParsedProduct(
+        name: name,
         price: price,
         description: '',
       );
+      nameBuffer.clear();
     }
 
-    if (pending != null) {
-      products.add(pending);
+    if (pendingProduct != null) {
+      products.add(pendingProduct);
     }
 
     return products;
+  }
+
+  List<String> _cleanLines(String rawText) {
+    return rawText
+        .split(RegExp(r'\r?\n'))
+        .map((line) => line.trim().replaceAll(RegExp(r'\s+'), ' '))
+        .where((line) => line.isNotEmpty)
+        .toList();
+  }
+
+  String _buildName(String sameLineName, List<String> nameBuffer) {
+    if (sameLineName.isNotEmpty) return sameLineName;
+    final bufferedName =
+        nameBuffer.where((line) => !_isNoiseLine(line)).join(' ').trim();
+    if (bufferedName.isNotEmpty) return bufferedName;
+    return 'İsimsiz ürün';
+  }
+
+  bool _isNoiseLine(String line) {
+    final normalized = line.trim().toLowerCase();
+    if (normalized.length < 2) return true;
+    if (RegExp(r'^\W+$').hasMatch(normalized)) return true;
+    if (RegExp(r'^(tl|try|₺)$', caseSensitive: false).hasMatch(normalized)) {
+      return true;
+    }
+    return false;
   }
 }
