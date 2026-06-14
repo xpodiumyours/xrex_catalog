@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/xrex_draft_product.dart';
+import 'xrex_glass_panel.dart';
 
 class CatalogPreviewList extends StatelessWidget {
   final List<XRexDraftProduct> products;
@@ -39,26 +40,22 @@ class CatalogPreviewList extends StatelessWidget {
             }
 
             final product = products[index - 1];
-            return Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111827),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF233149)),
-              ),
+            return XRexGlassPanel(
+              accentColor: const Color(0xFF22C55E),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B1220),
-                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFF052E2B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0x6634D399)),
                     ),
                     child: const Icon(
                       Icons.inventory_2_outlined,
-                      color: Color(0xFF06B6D4),
+                      color: Color(0xFF34D399),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -72,7 +69,7 @@ class CatalogPreviewList extends StatelessWidget {
                               : product.name.trim(),
                           style: const TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             color: Colors.white,
                           ),
                         ),
@@ -103,9 +100,9 @@ class CatalogPreviewList extends StatelessWidget {
                   Text(
                     product.price.trim().isEmpty ? '-' : product.price.trim(),
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF22C55E),
+                      color: Color(0xFF34D399),
                     ),
                   ),
                 ],
@@ -129,13 +126,8 @@ class _PreviewSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1728),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF233149)),
-      ),
+    return XRexGlassPanel(
+      strongGlow: true,
       child: Row(
         children: [
           Container(
@@ -144,6 +136,7 @@ class _PreviewSummary extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF062D3B),
               borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: const Color(0x6606B6D4)),
             ),
             child: const Icon(
               Icons.fact_check_outlined,
@@ -155,6 +148,16 @@ class _PreviewSummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'CATALOG PREVIEW',
+                  style: TextStyle(
+                    color: Color(0xFF67E8F9),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   '$productCount ürün katalog taslağı hazır',
                   style: const TextStyle(
@@ -193,7 +196,7 @@ class _ChipLabel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF0B1220),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF263349)),
+        border: Border.all(color: const Color(0x3322D3EE)),
       ),
       child: Text(
         label,

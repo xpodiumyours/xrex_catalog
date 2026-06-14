@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/xrex_catalog_session.dart';
 import '../services/xrex_catalog_service.dart';
 import '../widgets/catalog_preview_list.dart';
+import '../widgets/xrex_glass_panel.dart';
 
 class XRexReviewScreen extends StatelessWidget {
   final XRexCatalogSession session;
@@ -17,11 +18,18 @@ class XRexReviewScreen extends StatelessWidget {
     final formattedJson = service.formattedJson(
       session.copyWith(products: validProducts),
     );
+    final payload = service.buildPayload(
+      session.copyWith(products: validProducts),
+    );
+    final quality = payload['quality'] as Map<String, dynamic>;
+    final warnings = quality['warnings'] as List<dynamic>;
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          backgroundColor: const Color(0xFF080D18),
+          surfaceTintColor: Colors.transparent,
           title: const Text('X-rex Son Kontrol'),
           bottom: const TabBar(
             tabs: [
@@ -30,76 +38,113 @@ class XRexReviewScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            CatalogPreviewList(
-              products: validProducts,
-              businessType: session.businessType,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topLeft,
+              radius: 1.35,
+              colors: [Color(0xFF10213A), Color(0xFF050711)],
             ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _ReviewSummary(
-                    businessType: session.businessType,
-                    productCount: validProducts.length,
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF050A14),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFF233149)),
-                      ),
-                      child: Scrollbar(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SingleChildScrollView(
-                            child: SelectableText(
-                              formattedJson,
-                              style: const TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 13,
-                                height: 1.45,
-                                color: Color(0xFFE2E8F0),
+          ),
+          child: TabBarView(
+            children: [
+              CatalogPreviewList(
+                products: validProducts,
+                businessType: session.businessType,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ReviewSummary(
+                      businessType: session.businessType,
+                      productCount: validProducts.length,
+                      warningCount: warnings.length,
+                    ),
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: XRexGlassPanel(
+                        padding: const EdgeInsets.all(0),
+                        strongGlow: true,
+                        child: Column(
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: XRexSectionHeader(
+                                icon: Icons.data_object_rounded,
+                                eyebrow: 'MASTER JSON CONSOLE',
+                                title: 'Katalog veri paketi',
+                                trailing: 'v1',
                               ),
                             ),
-                          ),
+                            Expanded(
+                              child: Container(
+                                margin: const EdgeInsets.fromLTRB(
+                                  14,
+                                  0,
+                                  14,
+                                  14,
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xE6050A14),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: const Color(0x3322D3EE),
+                                  ),
+                                ),
+                                child: Scrollbar(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: SingleChildScrollView(
+                                      child: SelectableText(
+                                        formattedJson,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 13,
+                                          height: 1.45,
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: formattedJson),
-                      );
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Katalog JSON verisi panoya kopyalandı.',
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: formattedJson),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Master JSON verisi panoya kopyalandı.',
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded),
-                    label: const Text('JSON kopyala'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF06B6D4),
-                      foregroundColor: const Color(0xFF04111D),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('Master JSON kopyala'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        foregroundColor: const Color(0xFF04111D),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -109,36 +154,45 @@ class XRexReviewScreen extends StatelessWidget {
 class _ReviewSummary extends StatelessWidget {
   final String businessType;
   final int productCount;
+  final int warningCount;
 
   const _ReviewSummary({
     required this.businessType,
     required this.productCount,
+    required this.warningCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF233149)),
-      ),
+    return XRexGlassPanel(
+      strongGlow: true,
       child: Row(
         children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            color: Color(0xFF22C55E),
-          ),
+          const Icon(Icons.hub_rounded, color: Color(0xFF22D3EE)),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              '$productCount ürün hazırlandı · İşletme türü: $businessType',
-              style: const TextStyle(
-                color: Color(0xFFE2E8F0),
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'EXPORT STATUS',
+                  style: TextStyle(
+                    color: Color(0xFF67E8F9),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$productCount ürün hazırlandı · $warningCount uyarı · $businessType',
+                  style: const TextStyle(
+                    color: Color(0xFFE2E8F0),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
