@@ -7,6 +7,7 @@ class XRexCatalogSession {
   final String businessType;
   final Uint8List? selectedImageBytes;
   final String? selectedImagePath;
+  final String ocrRawText;
   final List<XRexDraftProduct> products;
 
   const XRexCatalogSession({
@@ -14,6 +15,7 @@ class XRexCatalogSession {
     required this.businessType,
     required this.selectedImageBytes,
     this.selectedImagePath,
+    this.ocrRawText = '',
     required this.products,
   });
 
@@ -22,6 +24,7 @@ class XRexCatalogSession {
     String? businessType,
     Uint8List? selectedImageBytes,
     String? selectedImagePath,
+    String? ocrRawText,
     List<XRexDraftProduct>? products,
   }) {
     return XRexCatalogSession(
@@ -29,6 +32,7 @@ class XRexCatalogSession {
       businessType: businessType ?? this.businessType,
       selectedImageBytes: selectedImageBytes ?? this.selectedImageBytes,
       selectedImagePath: selectedImagePath ?? this.selectedImagePath,
+      ocrRawText: ocrRawText ?? this.ocrRawText,
       products: products ?? this.products,
     );
   }

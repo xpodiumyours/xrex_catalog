@@ -254,7 +254,10 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
       MaterialPageRoute(
         builder:
             (_) => XRexReviewScreen(
-              session: widget.session.copyWith(products: validProducts),
+              session: widget.session.copyWith(
+                products: validProducts,
+                ocrRawText: candidateTextController.text,
+              ),
             ),
       ),
     );
