@@ -10,6 +10,7 @@ import '../services/xrex_ocr_service.dart';
 import '../services/xrex_text_parser_service.dart';
 import '../widgets/xrex_text_candidate_panel.dart';
 import '../widgets/xrex_draft_product_card.dart';
+import '../widgets/xrex_glass_panel.dart';
 
 class XRexImportScreen extends StatefulWidget {
   final XRexCatalogSession session;
@@ -283,6 +284,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF080D18),
+        surfaceTintColor: Colors.transparent,
         title: const Text('X-rex Taslak Paneli'),
         actions: [
           TextButton.icon(
@@ -295,20 +298,62 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 960;
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child:
-                  isWide
-                      ? Row(
-                        children: [
-                          SizedBox(
-                            width: 460,
-                            child: _ReferenceColumn(
-                              bytes: widget.session.selectedImageBytes,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.35,
+            colors: [Color(0xFF10213A), Color(0xFF050711)],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 960;
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child:
+                    isWide
+                        ? Row(
+                          children: [
+                            SizedBox(
+                              width: 460,
+                              child: _ReferenceColumn(
+                                bytes: widget.session.selectedImageBytes,
+                                textController: candidateTextController,
+                                candidates: textCandidates,
+                                hasDraft: products.isNotEmpty,
+                                canBuildDrafts:
+                                    candidateTextController.text
+                                        .trim()
+                                        .isNotEmpty,
+                                onTextChanged: _parseCandidateText,
+                                onReadImageText: _readImageText,
+                                onBuildDrafts: _buildDraftsFromCandidateText,
+                                onApplyToActiveDraft:
+                                    _applyCandidateToActiveDraft,
+                                canReadImageText: _canUseOcr,
+                                isReadingImageText: isReadingImageText,
+                                ocrButtonLabel: _ocrButtonLabel,
+                                ocrHelpText: _ocrHelpText,
+                                autoCatalogMessage: autoCatalogMessage,
+                                isAutoCatalogError: isAutoCatalogError,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(child: _draftList()),
+                          ],
+                        )
+                        : Column(
+                          children: [
+                            SizedBox(
+                              height: 260,
+                              child: _ReferenceImage(
+                                bytes: widget.session.selectedImageBytes,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            XRexTextCandidatePanel(
                               textController: candidateTextController,
                               candidates: textCandidates,
                               hasDraft: products.isNotEmpty,
@@ -328,43 +373,13 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                               autoCatalogMessage: autoCatalogMessage,
                               isAutoCatalogError: isAutoCatalogError,
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(child: _draftList()),
-                        ],
-                      )
-                      : Column(
-                        children: [
-                          SizedBox(
-                            height: 260,
-                            child: _ReferenceImage(
-                              bytes: widget.session.selectedImageBytes,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          XRexTextCandidatePanel(
-                            textController: candidateTextController,
-                            candidates: textCandidates,
-                            hasDraft: products.isNotEmpty,
-                            canBuildDrafts:
-                                candidateTextController.text.trim().isNotEmpty,
-                            onTextChanged: _parseCandidateText,
-                            onReadImageText: _readImageText,
-                            onBuildDrafts: _buildDraftsFromCandidateText,
-                            onApplyToActiveDraft: _applyCandidateToActiveDraft,
-                            canReadImageText: _canUseOcr,
-                            isReadingImageText: isReadingImageText,
-                            ocrButtonLabel: _ocrButtonLabel,
-                            ocrHelpText: _ocrHelpText,
-                            autoCatalogMessage: autoCatalogMessage,
-                            isAutoCatalogError: isAutoCatalogError,
-                          ),
-                          const SizedBox(height: 14),
-                          Expanded(child: _draftList()),
-                        ],
-                      ),
-            );
-          },
+                            const SizedBox(height: 14),
+                            Expanded(child: _draftList()),
+                          ],
+                        ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -402,28 +417,47 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _addDraft,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Ürün taslağı ekle'),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xCC050A14),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0x3322D3EE)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0xAA020617),
+                blurRadius: 22,
+                offset: Offset(0, 12),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _goReview,
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Kataloğa aktar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6A00),
-                  foregroundColor: Colors.white,
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addDraft,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Ürün taslağı ekle'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF22D3EE),
+                    side: const BorderSide(color: Color(0xFF155E75)),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _goReview,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Kataloğa aktar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6A00),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -540,28 +574,47 @@ class _ReferenceImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1728),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF233149)),
-      ),
+    return XRexGlassPanel(
+      padding: EdgeInsets.zero,
+      strongGlow: true,
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(14),
+          Padding(
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                Icon(Icons.zoom_in_rounded, size: 18, color: Color(0xFF06B6D4)),
-                SizedBox(width: 8),
-                Expanded(
+                const Icon(
+                  Icons.sensors_rounded,
+                  size: 18,
+                  color: Color(0xFF22D3EE),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
                   child: Text(
-                    'Referans fotoğrafı yakınlaştırabilirsiniz.',
+                    'SOURCE IMAGE · ZOOM 5X · LOCAL ONLY',
                     style: TextStyle(
                       color: Color(0xFFCBD5E1),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF062D3B),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0x6606B6D4)),
+                  ),
+                  child: const Text(
+                    'SCAN',
+                    style: TextStyle(
+                      color: Color(0xFF67E8F9),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),

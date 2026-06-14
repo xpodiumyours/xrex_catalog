@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/xrex_draft_product.dart';
+import 'xrex_glass_panel.dart';
 
 class XRexDraftProductCard extends StatelessWidget {
   final int index;
@@ -54,26 +55,56 @@ class XRexDraftProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF233149)),
-      ),
+    final status = _statusLabel();
+    final statusColor =
+        warnings.isEmpty ? const Color(0xFF22C55E) : const Color(0xFFF97316);
+    return XRexGlassPanel(
+      accentColor: statusColor,
+      strongGlow: warnings.isEmpty,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF020617),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                ),
+                child: Icon(
+                  warnings.isEmpty
+                      ? Icons.check_rounded
+                      : Icons.priority_high_rounded,
+                  color: statusColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Ürün #$index',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ürün #$index',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               IconButton(
@@ -188,6 +219,12 @@ class XRexDraftProductCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _statusLabel() {
+    if (warnings.isEmpty) return 'HAZIR';
+    if (warnings.any((warning) => warning.contains('eksik'))) return 'EKSİK';
+    return 'KONTROL';
   }
 }
 

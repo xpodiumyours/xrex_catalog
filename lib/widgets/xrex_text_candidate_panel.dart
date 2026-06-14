@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/xrex_text_candidate.dart';
+import 'xrex_glass_panel.dart';
 
 class XRexTextCandidatePanel extends StatelessWidget {
   final TextEditingController textController;
@@ -38,33 +39,19 @@ class XRexTextCandidatePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1728),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF233149)),
-      ),
+    return XRexGlassPanel(
+      padding: const EdgeInsets.all(16),
+      accentColor: const Color(0xFF06B6D4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.manage_search_rounded, color: Color(0xFF06B6D4)),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Metin / fiyat adayları',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+          const XRexSectionHeader(
+            icon: Icons.auto_awesome_motion_rounded,
+            eyebrow: 'AUTO CATALOG ENGINE',
+            title: 'Otomatik katalog motoru',
+            trailing: 'LOCAL',
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           TextField(
             controller: textController,
             minLines: 2,
@@ -91,6 +78,11 @@ class XRexTextCandidatePanel extends StatelessWidget {
               label: Text(
                 isReadingImageText ? 'Fotoğraf okunuyor' : ocrButtonLabel,
               ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF083344),
+                foregroundColor: const Color(0xFF67E8F9),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
           if (ocrHelpText != null) ...[
@@ -111,6 +103,11 @@ class XRexTextCandidatePanel extends StatelessWidget {
               onPressed: canBuildDrafts ? onBuildDrafts : null,
               icon: const Icon(Icons.auto_fix_high_rounded),
               label: const Text('Metni taslaklara dönüştür'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF22D3EE),
+                side: const BorderSide(color: Color(0xFF155E75)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
           if (autoCatalogMessage != null) ...[
@@ -139,6 +136,13 @@ class XRexTextCandidatePanel extends StatelessWidget {
                     final isPrice =
                         candidate.type == XRexTextCandidateType.price;
                     return ActionChip(
+                      backgroundColor: const Color(0xFF0B1220),
+                      side: BorderSide(
+                        color:
+                            isPrice
+                                ? const Color(0x6634D399)
+                                : const Color(0x6606B6D4),
+                      ),
                       avatar: Icon(
                         isPrice
                             ? Icons.sell_outlined
