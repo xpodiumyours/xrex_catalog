@@ -1,0 +1,47 @@
+{
+  "rawText": "Gül Suyu Krem 120,00\nEl Kremi 45,50 TL",
+  "lines": [
+    {
+      "text": "Gül Suyu Krem 120,00",
+      "blockIndex": 1,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 150.0,
+        "right": 350.0,
+        "bottom": 185.0,
+        "width": 300.0,
+        "height": 35.0
+      }
+    },
+    {
+      "text": "El Kremi 45,50 TL",
+      "blockIndex": 2,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 220.0,
+        "right": 350.0,
+        "bottom": 255.0,
+        "width": 300.0,
+        "height": 35.0
+      }
+    }
+  ],
+  "expectedProducts": [
+    {
+      "name": "Gül Suyu Krem",
+      "price": "120,00",
+      "priceAmount": 120.0,
+      "category": "Kozmetik"
+    },
+    {
+      "name": "El Kremi",
+      "price": "45,50 TL",
+      "priceAmount": 45.5,
+      "category": "Kozmetik"
+    }
+  ],
+  "expectedCategory": "Kozmetik",
+  "expectedPrice": "120,00"
+}

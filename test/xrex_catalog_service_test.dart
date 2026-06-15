@@ -55,6 +55,34 @@ void main() {
     expect(price['isParsed'], true);
   });
 
+  test('parses Turkish thousands price', () {
+    final payload = service.buildPayload(
+      sessionWithProducts([
+        XRexDraftProduct(id: 'prod-1', name: 'Ürün', price: '5.500 TL'),
+      ]),
+    );
+
+    final product = (payload['products'] as List).first as Map<String, dynamic>;
+    final price = product['price'] as Map<String, dynamic>;
+
+    expect(price['amount'], 5500);
+    expect(price['isParsed'], true);
+  });
+
+  test('parses Turkish thousands with comma decimal price', () {
+    final payload = service.buildPayload(
+      sessionWithProducts([
+        XRexDraftProduct(id: 'prod-1', name: 'Ürün', price: '4.727,64 TL'),
+      ]),
+    );
+
+    final product = (payload['products'] as List).first as Map<String, dynamic>;
+    final price = product['price'] as Map<String, dynamic>;
+
+    expect(price['amount'], 4727.64);
+    expect(price['isParsed'], true);
+  });
+
   test('keeps unparsed price and adds warning', () {
     final payload = service.buildPayload(
       sessionWithProducts([
@@ -118,5 +146,32 @@ void main() {
     expect(products.length, 1);
     expect(quality['productCount'], 1);
     expect(quality['emptyProductsRemoved'], 1);
+  });
+
+  test('keeps parser metadata in master JSON', () {
+    final payload = service.buildPayload(
+      sessionWithProducts([
+        XRexDraftProduct(
+          id: 'prod-1',
+          name: 'Ofis koltuğu',
+          price: '5.500 TL',
+          oldPrice: '6.500 TL',
+          sourceLineSummary: 'Ofis koltuğu\nSepette 5.500 TL\n6.500 TL',
+          parserWarnings: const ['Kategori kullanıcı kontrolü istiyor.'],
+        ),
+      ]),
+    );
+
+    final product = (payload['products'] as List).first as Map<String, dynamic>;
+    final price = product['price'] as Map<String, dynamic>;
+    final origin = product['origin'] as Map<String, dynamic>;
+    final review = product['review'] as Map<String, dynamic>;
+
+    expect(price['oldRaw'], '6.500 TL');
+    expect(origin['sourceLines'], contains('Ofis koltuğu'));
+    expect(
+      review['warnings'],
+      contains('Kategori kullanıcı kontrolü istiyor.'),
+    );
   });
 }

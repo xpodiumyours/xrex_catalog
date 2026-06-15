@@ -15,6 +15,7 @@ class XRexTextCandidatePanel extends StatelessWidget {
   final bool canReadImageText;
   final bool isReadingImageText;
   final String ocrButtonLabel;
+  final bool showOcrButton;
   final String? ocrHelpText;
   final String? autoCatalogMessage;
   final bool isAutoCatalogError;
@@ -32,6 +33,7 @@ class XRexTextCandidatePanel extends StatelessWidget {
     required this.canReadImageText,
     required this.isReadingImageText,
     required this.ocrButtonLabel,
+    this.showOcrButton = true,
     this.ocrHelpText,
     this.autoCatalogMessage,
     this.isAutoCatalogError = false,
@@ -47,9 +49,9 @@ class XRexTextCandidatePanel extends StatelessWidget {
         children: [
           const XRexSectionHeader(
             icon: Icons.auto_awesome_motion_rounded,
-            eyebrow: 'AUTO CATALOG ENGINE',
-            title: 'Otomatik katalog motoru',
-            trailing: 'LOCAL',
+            eyebrow: 'ÜRÜN OLUŞTURMA',
+            title: 'Ürünleri birlikte çıkaralım',
+            trailing: 'Yerel',
           ),
           const SizedBox(height: 14),
           TextField(
@@ -57,36 +59,37 @@ class XRexTextCandidatePanel extends StatelessWidget {
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(
-              labelText: 'Etiketten okuduğun metni buraya yapıştır',
+              labelText: 'Ürün adı, fiyat veya etiket metnini buraya yapıştır',
               hintText: 'Örn: Penti çorap 175 TL\nParlak model',
             ),
             onChanged: onTextChanged,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: canReadImageText ? onReadImageText : null,
-              icon:
-                  isReadingImageText
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Icon(Icons.document_scanner_outlined),
-              label: Text(
-                isReadingImageText ? 'Fotoğraf okunuyor' : ocrButtonLabel,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF083344),
-                foregroundColor: const Color(0xFF67E8F9),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          if (showOcrButton)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: canReadImageText ? onReadImageText : null,
+                icon:
+                    isReadingImageText
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.document_scanner_outlined),
+                label: Text(
+                  isReadingImageText ? 'Fotoğraf okunuyor' : ocrButtonLabel,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF083344),
+                  foregroundColor: const Color(0xFF67E8F9),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
               ),
             ),
-          ),
           if (ocrHelpText != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: showOcrButton ? 8 : 0),
             Text(
               ocrHelpText!,
               style: const TextStyle(
@@ -102,7 +105,7 @@ class XRexTextCandidatePanel extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: canBuildDrafts ? onBuildDrafts : null,
               icon: const Icon(Icons.auto_fix_high_rounded),
-              label: const Text('Metni taslaklara dönüştür'),
+              label: const Text('Metinden ürün oluştur'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF22D3EE),
                 side: const BorderSide(color: Color(0xFF155E75)),

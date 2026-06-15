@@ -5,7 +5,7 @@ class XRexTextParserService {
   const XRexTextParserService();
 
   static final RegExp _pricePattern = RegExp(
-    r'(?:(?:₺|TL|TRY)\s*)?\d{1,6}(?:[.,]\d{1,2})?\s*(?:₺|TL|TRY|tl|try)?',
+    r'(?:sepette\s*)?(?:(?:₺|TL|TRY)\s*)?(?:\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,2})?|\d{1,6}(?:[.,]\d{1,2})?)\s*(?:₺|TL|TRY|tl|try)?',
     caseSensitive: false,
   );
 

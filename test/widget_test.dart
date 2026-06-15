@@ -7,6 +7,7 @@ void main() {
     await tester.pumpWidget(const XRexCatalogApp());
 
     expect(find.text('X-rex'), findsOneWidget);
-    expect(find.text('Fotoğraftan katalog taslağı oluştur.'), findsOneWidget);
+    expect(find.text('Ürün fotoğrafı'), findsOneWidget);
+    expect(find.text('Fotoğraf yükle'), findsOneWidget);
   });
 }

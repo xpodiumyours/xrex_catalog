@@ -30,16 +30,13 @@ class PhotoPickerZone extends StatelessWidget {
                   hasImage
                       ? Icons.check_circle_outline_rounded
                       : Icons.add_photo_alternate_outlined,
-              eyebrow: 'SOURCE INPUT',
-              title:
-                  hasImage
-                      ? 'Fotoğraf seçildi'
-                      : 'Fotoğraf veya ekran görüntüsü seç',
-              trailing: hasImage ? 'READY' : 'LOCAL',
+              eyebrow: 'FOTOĞRAF',
+              title: hasImage ? 'Fotoğraf seçildi' : 'Ürün fotoğrafını yükle',
+              trailing: hasImage ? 'Hazır' : 'Yerel',
             ),
             const SizedBox(height: 14),
             const Text(
-              'Raf, reyon, çoklu ürün fotoğrafı veya e-ticaret ekran görüntüsü kullanabilirsiniz.',
+              'Mağaza, vitrin, tezgah, çoklu ürün fotoğrafı veya e-ticaret ekran görüntüsü kullanabilirsiniz.',
               style: TextStyle(
                 fontSize: 13,
                 height: 1.45,

@@ -149,7 +149,7 @@ class _PreviewSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'CATALOG PREVIEW',
+                  'KATALOG ÖNİZLEME',
                   style: TextStyle(
                     color: Color(0xFF67E8F9),
                     fontSize: 10,

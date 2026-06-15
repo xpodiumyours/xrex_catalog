@@ -88,7 +88,9 @@ class XRexDraftProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ürün #$index',
+                      product.sourceIndex != null
+                          ? 'Ürün ${product.sourceIndex} · ${product.quantity} Adet'
+                          : 'Ürün #$index · ${product.quantity} Adet',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
@@ -145,6 +147,7 @@ class XRexDraftProductCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                flex: 3,
                 child: TextField(
                   controller: priceController,
                   focusNode: priceFocusNode,
@@ -160,6 +163,7 @@ class XRexDraftProductCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
+                flex: 4,
                 child: DropdownButtonFormField<String>(
                   value:
                       categories.contains(product.category)
@@ -179,6 +183,22 @@ class XRexDraftProductCard extends StatelessWidget {
                     if (value == null) return;
                     product.category = value;
                     onChanged(product);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  initialValue: product.quantity.toString(),
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Adet'),
+                  onChanged: (value) {
+                    final parsed = int.tryParse(value);
+                    if (parsed != null && parsed > 0) {
+                      product.quantity = parsed;
+                      onChanged(product);
+                    }
                   },
                 ),
               ),
@@ -222,9 +242,11 @@ class XRexDraftProductCard extends StatelessWidget {
   }
 
   String _statusLabel() {
-    if (warnings.isEmpty) return 'HAZIR';
-    if (warnings.any((warning) => warning.contains('eksik'))) return 'EKSİK';
-    return 'KONTROL';
+    if (warnings.isEmpty) return 'Hazır';
+    if (warnings.any((warning) => warning.contains('eksik'))) {
+      return 'Eksik bilgi';
+    }
+    return 'Kontrol gerekli';
   }
 }
 

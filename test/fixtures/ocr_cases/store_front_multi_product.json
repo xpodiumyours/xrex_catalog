@@ -1,0 +1,137 @@
+{
+  "rawText": "Keten Elbise\n1.200 TL\nDeri Mont\n4.727,64 TL\nKeten Pantolon\n850 TL\nPamuklu Gömlek\n600 TL",
+  "lines": [
+    {
+      "text": "Keten Elbise",
+      "blockIndex": 1,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 200.0,
+        "right": 200.0,
+        "bottom": 230.0,
+        "width": 150.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "1.200 TL",
+      "blockIndex": 1,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 250.0,
+        "right": 150.0,
+        "bottom": 275.0,
+        "width": 100.0,
+        "height": 25.0
+      }
+    },
+    {
+      "text": "Deri Mont",
+      "blockIndex": 2,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 300.0,
+        "top": 200.0,
+        "right": 450.0,
+        "bottom": 230.0,
+        "width": 150.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "4.727,64 TL",
+      "blockIndex": 2,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 300.0,
+        "top": 250.0,
+        "right": 420.0,
+        "bottom": 275.0,
+        "width": 120.0,
+        "height": 25.0
+      }
+    },
+    {
+      "text": "Keten Pantolon",
+      "blockIndex": 3,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 500.0,
+        "right": 200.0,
+        "bottom": 530.0,
+        "width": 150.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "850 TL",
+      "blockIndex": 3,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 50.0,
+        "top": 550.0,
+        "right": 130.0,
+        "bottom": 575.0,
+        "width": 80.0,
+        "height": 25.0
+      }
+    },
+    {
+      "text": "Pamuklu Gömlek",
+      "blockIndex": 4,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 300.0,
+        "top": 500.0,
+        "right": 450.0,
+        "bottom": 530.0,
+        "width": 150.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "600 TL",
+      "blockIndex": 4,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 300.0,
+        "top": 550.0,
+        "right": 380.0,
+        "bottom": 575.0,
+        "width": 80.0,
+        "height": 25.0
+      }
+    }
+  ],
+  "expectedProducts": [
+    {
+      "name": "Keten Elbise",
+      "price": "1.200 TL",
+      "priceAmount": 1200.0,
+      "category": "Giyim"
+    },
+    {
+      "name": "Deri Mont",
+      "price": "4.727,64 TL",
+      "priceAmount": 4727.64,
+      "category": "Giyim"
+    },
+    {
+      "name": "Keten Pantolon",
+      "price": "850 TL",
+      "priceAmount": 850.0,
+      "category": "Giyim"
+    },
+    {
+      "name": "Pamuklu Gömlek",
+      "price": "600 TL",
+      "priceAmount": 600.0,
+      "category": "Giyim"
+    }
+  ],
+  "expectedCategory": "Giyim",
+  "expectedPrice": "1.200 TL"
+}

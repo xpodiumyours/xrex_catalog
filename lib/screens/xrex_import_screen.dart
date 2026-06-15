@@ -10,6 +10,7 @@ import '../services/xrex_ocr_service.dart';
 import '../services/xrex_text_parser_service.dart';
 import '../widgets/xrex_text_candidate_panel.dart';
 import '../widgets/xrex_draft_product_card.dart';
+import '../widgets/xrex_step_indicator.dart';
 import '../widgets/xrex_glass_panel.dart';
 
 class XRexImportScreen extends StatefulWidget {
@@ -37,6 +38,8 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   bool isReadingImageText = false;
   String? autoCatalogMessage;
   bool isAutoCatalogError = false;
+  bool hasTriedReview = false;
+  final Set<String> reviewedDraftIds = {};
 
   String lastCategory = 'Genel';
 
@@ -49,13 +52,12 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   }
 
   String get _ocrButtonLabel {
-    if (kIsWeb) return 'OCR Android testinde çalışır';
     return 'Fotoğraftan metni oku';
   }
 
   String? get _ocrHelpText {
     if (kIsWeb) {
-      return 'Chrome/web ekranında OCR desteklenmez. Webde metni elle yapıştırıp taslak oluşturabilirsiniz.';
+      return 'Web’de metni elle yapıştırabilirsiniz. Android’de fotoğraftan metin okuma çalışır.';
     }
     if (!_canUseOcr && !isReadingImageText) {
       return 'OCR için Android cihazda dosya yolu olan bir fotoğraf seçilmelidir.';
@@ -222,6 +224,7 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
     draft.description = parsed.description;
     draft.category = lastCategory;
     draft.stockStatus = 'Mevcut';
+    reviewedDraftIds.add(draft.id);
 
     nameControllers[draft.id]?.text = draft.name;
     priceControllers[draft.id]?.text = draft.price;
@@ -259,8 +262,11 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
     final validProducts =
         products.where((product) => !product.isBlank).toList();
     if (validProducts.isEmpty) {
+      setState(() => hasTriedReview = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Önizleme için en az 1 ürün doldurun.')),
+        const SnackBar(
+          content: Text('Önce en az bir ürün adı veya fiyat girin.'),
+        ),
       );
       return;
     }
@@ -286,7 +292,7 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF080D18),
         surfaceTintColor: Colors.transparent,
-        title: const Text('X-rex Taslak Paneli'),
+        title: const Text('X-rex Ürünleri Düzenle'),
         actions: [
           TextButton.icon(
             onPressed: _goReview,
@@ -312,71 +318,82 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
               final isWide = constraints.maxWidth >= 960;
               return Padding(
                 padding: const EdgeInsets.all(16),
-                child:
-                    isWide
-                        ? Row(
-                          children: [
-                            SizedBox(
-                              width: 460,
-                              child: _ReferenceColumn(
-                                bytes: widget.session.selectedImageBytes,
-                                textController: candidateTextController,
-                                candidates: textCandidates,
-                                hasDraft: products.isNotEmpty,
-                                canBuildDrafts:
-                                    candidateTextController.text
-                                        .trim()
-                                        .isNotEmpty,
-                                onTextChanged: _parseCandidateText,
-                                onReadImageText: _readImageText,
-                                onBuildDrafts: _buildDraftsFromCandidateText,
-                                onApplyToActiveDraft:
-                                    _applyCandidateToActiveDraft,
-                                canReadImageText: _canUseOcr,
-                                isReadingImageText: isReadingImageText,
-                                ocrButtonLabel: _ocrButtonLabel,
-                                ocrHelpText: _ocrHelpText,
-                                autoCatalogMessage: autoCatalogMessage,
-                                isAutoCatalogError: isAutoCatalogError,
+                child: Column(
+                  children: [
+                    const XRexStepIndicator(activeStep: 2),
+                    Expanded(
+                      child:
+                          isWide
+                              ? Row(
+                                children: [
+                                  SizedBox(
+                                    width: 460,
+                                    child: _ReferenceColumn(
+                                      bytes: widget.session.selectedImageBytes,
+                                      textController: candidateTextController,
+                                      candidates: textCandidates,
+                                      hasDraft: products.isNotEmpty,
+                                      canBuildDrafts:
+                                          candidateTextController.text
+                                              .trim()
+                                              .isNotEmpty,
+                                      onTextChanged: _parseCandidateText,
+                                      onReadImageText: _readImageText,
+                                      onBuildDrafts:
+                                          _buildDraftsFromCandidateText,
+                                      onApplyToActiveDraft:
+                                          _applyCandidateToActiveDraft,
+                                      canReadImageText: _canUseOcr,
+                                      isReadingImageText: isReadingImageText,
+                                      ocrButtonLabel: _ocrButtonLabel,
+                                      showOcrButton: !kIsWeb,
+                                      ocrHelpText: _ocrHelpText,
+                                      autoCatalogMessage: autoCatalogMessage,
+                                      isAutoCatalogError: isAutoCatalogError,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: _draftList()),
+                                ],
+                              )
+                              : Column(
+                                children: [
+                                  SizedBox(
+                                    height: 260,
+                                    child: _ReferenceImage(
+                                      bytes: widget.session.selectedImageBytes,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  XRexTextCandidatePanel(
+                                    textController: candidateTextController,
+                                    candidates: textCandidates,
+                                    hasDraft: products.isNotEmpty,
+                                    canBuildDrafts:
+                                        candidateTextController.text
+                                            .trim()
+                                            .isNotEmpty,
+                                    onTextChanged: _parseCandidateText,
+                                    onReadImageText: _readImageText,
+                                    onBuildDrafts:
+                                        _buildDraftsFromCandidateText,
+                                    onApplyToActiveDraft:
+                                        _applyCandidateToActiveDraft,
+                                    canReadImageText: _canUseOcr,
+                                    isReadingImageText: isReadingImageText,
+                                    ocrButtonLabel: _ocrButtonLabel,
+                                    showOcrButton: !kIsWeb,
+                                    ocrHelpText: _ocrHelpText,
+                                    autoCatalogMessage: autoCatalogMessage,
+                                    isAutoCatalogError: isAutoCatalogError,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(child: _draftList()),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(child: _draftList()),
-                          ],
-                        )
-                        : Column(
-                          children: [
-                            SizedBox(
-                              height: 260,
-                              child: _ReferenceImage(
-                                bytes: widget.session.selectedImageBytes,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            XRexTextCandidatePanel(
-                              textController: candidateTextController,
-                              candidates: textCandidates,
-                              hasDraft: products.isNotEmpty,
-                              canBuildDrafts:
-                                  candidateTextController.text
-                                      .trim()
-                                      .isNotEmpty,
-                              onTextChanged: _parseCandidateText,
-                              onReadImageText: _readImageText,
-                              onBuildDrafts: _buildDraftsFromCandidateText,
-                              onApplyToActiveDraft:
-                                  _applyCandidateToActiveDraft,
-                              canReadImageText: _canUseOcr,
-                              isReadingImageText: isReadingImageText,
-                              ocrButtonLabel: _ocrButtonLabel,
-                              ocrHelpText: _ocrHelpText,
-                              autoCatalogMessage: autoCatalogMessage,
-                              isAutoCatalogError: isAutoCatalogError,
-                            ),
-                            const SizedBox(height: 14),
-                            Expanded(child: _draftList()),
-                          ],
-                        ),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -407,6 +424,7 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                 onChanged: (changed) {
                   lastCategory = changed.category;
                   activeDraftId = changed.id;
+                  reviewedDraftIds.add(changed.id);
                   setState(() {});
                 },
                 onDuplicate: () => _addDraft(source: product),
@@ -449,7 +467,7 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _goReview,
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Kataloğa aktar'),
+                  label: const Text('Son kontrole geç'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF6A00),
                     foregroundColor: Colors.white,
@@ -464,6 +482,10 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
   }
 
   List<String> _productWarnings(XRexDraftProduct product) {
+    if (!hasTriedReview && !reviewedDraftIds.contains(product.id)) {
+      return const [];
+    }
+
     final warnings = <String>[];
     if (product.name.trim().isEmpty) {
       warnings.add('Ürün adı eksik');
@@ -518,6 +540,7 @@ class _ReferenceColumn extends StatelessWidget {
   final bool canReadImageText;
   final bool isReadingImageText;
   final String ocrButtonLabel;
+  final bool showOcrButton;
   final String? ocrHelpText;
   final String? autoCatalogMessage;
   final bool isAutoCatalogError;
@@ -535,6 +558,7 @@ class _ReferenceColumn extends StatelessWidget {
     required this.canReadImageText,
     required this.isReadingImageText,
     required this.ocrButtonLabel,
+    required this.showOcrButton,
     required this.ocrHelpText,
     required this.autoCatalogMessage,
     required this.isAutoCatalogError,
@@ -554,6 +578,7 @@ class _ReferenceColumn extends StatelessWidget {
           canReadImageText: canReadImageText,
           isReadingImageText: isReadingImageText,
           ocrButtonLabel: ocrButtonLabel,
+          showOcrButton: showOcrButton,
           ocrHelpText: ocrHelpText,
           autoCatalogMessage: autoCatalogMessage,
           isAutoCatalogError: isAutoCatalogError,
@@ -584,14 +609,14 @@ class _ReferenceImage extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(
-                  Icons.sensors_rounded,
+                  Icons.zoom_in_rounded,
                   size: 18,
                   color: Color(0xFF22D3EE),
                 ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
-                    'SOURCE IMAGE · ZOOM 5X · LOCAL ONLY',
+                    'Referans fotoğraf · Yakınlaştırma açık',
                     style: TextStyle(
                       color: Color(0xFFCBD5E1),
                       fontWeight: FontWeight.w700,
@@ -610,7 +635,7 @@ class _ReferenceImage extends StatelessWidget {
                     border: Border.all(color: const Color(0x6606B6D4)),
                   ),
                   child: const Text(
-                    'SCAN',
+                    'Zoom',
                     style: TextStyle(
                       color: Color(0xFF67E8F9),
                       fontSize: 10,

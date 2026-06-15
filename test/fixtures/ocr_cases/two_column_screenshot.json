@@ -1,0 +1,73 @@
+{
+  "rawText": "OFİS Klas müdür koltuğu\nSepette 4.000 TL\nMasa sandalye takımı\n5.500 TL",
+  "lines": [
+    {
+      "text": "OFİS Klas müdür koltuğu",
+      "blockIndex": 1,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 30.0,
+        "top": 470.0,
+        "right": 245.0,
+        "bottom": 505.0,
+        "width": 215.0,
+        "height": 35.0
+      }
+    },
+    {
+      "text": "Sepette 4.000 TL",
+      "blockIndex": 1,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 30.0,
+        "top": 600.0,
+        "right": 180.0,
+        "bottom": 630.0,
+        "width": 150.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "Masa sandalye takımı",
+      "blockIndex": 2,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 310.0,
+        "top": 470.0,
+        "right": 520.0,
+        "bottom": 505.0,
+        "width": 210.0,
+        "height": 35.0
+      }
+    },
+    {
+      "text": "5.500 TL",
+      "blockIndex": 2,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 310.0,
+        "top": 600.0,
+        "right": 430.0,
+        "bottom": 630.0,
+        "width": 120.0,
+        "height": 30.0
+      }
+    }
+  ],
+  "expectedProducts": [
+    {
+      "name": "OFİS Klas müdür koltuğu",
+      "price": "Sepette 4.000 TL",
+      "priceAmount": 4000.0,
+      "category": "Mobilya"
+    },
+    {
+      "name": "Masa sandalye takımı",
+      "price": "5.500 TL",
+      "priceAmount": 5500.0,
+      "category": "Mobilya"
+    }
+  ],
+  "expectedCategory": "Mobilya",
+  "expectedPrice": "4.000 TL"
+}

@@ -1,0 +1,73 @@
+{
+  "rawText": "Gözlük Çerçevesi Kırmızı\n₺120\nSiyah Güneş Gözlüğü\n₺240",
+  "lines": [
+    {
+      "text": "Gözlük Çerçevesi Kırmızı",
+      "blockIndex": 1,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 100.0,
+        "top": 100.0,
+        "right": 300.0,
+        "bottom": 130.0,
+        "width": 200.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "₺120",
+      "blockIndex": 1,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 100.0,
+        "top": 140.0,
+        "right": 200.0,
+        "bottom": 170.0,
+        "width": 100.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "Siyah Güneş Gözlüğü",
+      "blockIndex": 2,
+      "lineIndex": 0,
+      "boundingBox": {
+        "left": 100.0,
+        "top": 300.0,
+        "right": 300.0,
+        "bottom": 330.0,
+        "width": 200.0,
+        "height": 30.0
+      }
+    },
+    {
+      "text": "₺240",
+      "blockIndex": 2,
+      "lineIndex": 1,
+      "boundingBox": {
+        "left": 100.0,
+        "top": 340.0,
+        "right": 200.0,
+        "bottom": 370.0,
+        "width": 100.0,
+        "height": 30.0
+      }
+    }
+  ],
+  "expectedProducts": [
+    {
+      "name": "Gözlük Çerçevesi Kırmızı",
+      "price": "₺120",
+      "priceAmount": 120.0,
+      "category": "Gözlük"
+    },
+    {
+      "name": "Siyah Güneş Gözlüğü",
+      "price": "₺240",
+      "priceAmount": 240.0,
+      "category": "Gözlük"
+    }
+  ],
+  "expectedCategory": "Gözlük",
+  "expectedPrice": "₺120"
+}
