@@ -125,7 +125,7 @@ class XRexCatalogAnalyzerService {
         } else if (region.label != null && region.label!.isNotEmpty) {
           name = _translateLabel(region.label!);
         } else {
-          name = 'Ürün Bölgesi #${i + 1}';
+          name = 'Görsel Ürün #${i + 1}';
         }
 
         final sourceLines = matchedOcr.map((line) => line.text).toList();
@@ -135,8 +135,8 @@ class XRexCatalogAnalyzerService {
             name: name,
             price: '',
             oldPrice: '',
-            description: 'Bölge #${i + 1} tespiti',
-            category: 'Genel',
+            description: 'Fotoğraftan ${region.label ?? 'ürün'} tespiti',
+            category: _inferCategoryFromName(name),
             stockStatus: 'Mevcut',
             sourceLineSummary: sourceLines.join('\n'),
             parserWarnings: const ['Fiyat güvenli okunamadı. İnceleme adayı.'],
@@ -224,6 +224,15 @@ class XRexCatalogAnalyzerService {
     }
 
     return mergedProducts;
+  }
+
+  String _inferCategoryFromName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('çay') || lower.contains('bitki') || lower.contains('baharat')) return 'Aktar ürünleri';
+    if (lower.contains('elbise') || lower.contains('tişört') || lower.contains('pantolon')) return 'Giyim';
+    if (lower.contains('gözlük')) return 'Gözlük';
+    if (lower.contains('vida') || lower.contains('matkap')) return 'Hırdavat';
+    return 'Genel';
   }
 
   double _horizontalOverlap(Rect a, Rect b) {

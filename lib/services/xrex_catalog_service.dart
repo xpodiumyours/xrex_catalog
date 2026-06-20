@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/xrex_catalog_session.dart';
 import '../models/xrex_draft_product.dart';
 import '../models/xrex_blog_draft.dart';
+import 'xrex_price_parser.dart';
 
 class XRexCatalogService {
   const XRexCatalogService();
@@ -314,29 +315,7 @@ class XRexCatalogService {
   }
 
   num? _parsePriceAmount(String rawPrice) {
-    final match = RegExp(
-      r'\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,2})?|\d{1,9}(?:[.,]\d{1,2})?',
-    ).firstMatch(rawPrice);
-    if (match == null) return null;
-
-    var normalized = match.group(0)!.replaceAll(RegExp(r'\s+'), '');
-    final hasComma = normalized.contains(',');
-    final hasDot = normalized.contains('.');
-    if (hasComma && hasDot) {
-      normalized = normalized.replaceAll('.', '').replaceAll(',', '.');
-    } else if (hasComma) {
-      normalized = normalized.replaceAll(',', '.');
-    } else if (hasDot) {
-      final parts = normalized.split('.');
-      if (parts.length > 1 && parts.last.length == 3) {
-        normalized = normalized.replaceAll('.', '');
-      }
-    }
-
-    final parsed = num.tryParse(normalized);
-    if (parsed == null) return null;
-    if (parsed % 1 == 0) return parsed.toInt();
-    return parsed;
+    return XRexPriceParser.parseAmount(rawPrice);
   }
 
   String _normalize(String value) {

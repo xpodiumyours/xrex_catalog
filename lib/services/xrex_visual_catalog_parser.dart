@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../models/xrex_detected_region.dart';
 import '../models/xrex_ocr_line.dart';
 import '../models/xrex_parsed_product.dart';
+import 'xrex_price_parser.dart';
 import 'xrex_text_parser_service.dart';
 
 class XRexVisualCatalogParser {
@@ -12,11 +13,6 @@ class XRexVisualCatalogParser {
   const XRexVisualCatalogParser({
     this.fallbackTextParserService = const XRexTextParserService(),
   });
-
-  static final RegExp _pricePattern = RegExp(
-    r'(?:sepette\s*)?(?:₺|TL|TRY)?\s*(?:\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,2})?|\d{1,6}(?:[.,]\d{1,2})?)\s*(?:₺|TL|TRY|tl|try)?',
-    caseSensitive: false,
-  );
 
   List<XRexParsedProduct> parse({
     required String rawText,
@@ -104,7 +100,7 @@ class XRexVisualCatalogParser {
 
         final selectedNameLines = nameLines.take(3).toList().reversed.toList();
         final sameLineName = _cleanProductName(
-          priceLine.text.replaceFirst(_pricePattern, ''),
+          priceLine.text.replaceFirst(price, ''),
         );
         final name = _buildName(sameLineName, selectedNameLines);
 
@@ -253,16 +249,20 @@ class XRexVisualCatalogParser {
   }
 
   String _buildName(String sameLineName, List<_LineCandidate> nameLines) {
-    if (sameLineName.trim().isNotEmpty) return sameLineName.trim();
+    var primary = sameLineName.trim();
+    if (primary.isNotEmpty && primary.length > 3) return primary;
 
     final joined =
         nameLines
             .map((line) => _cleanProductName(line.text))
-            .where((line) => line.isNotEmpty)
+            .where((line) => line.isNotEmpty && line.length > 1)
             .join(' ')
             .trim();
 
-    return joined.isEmpty ? 'İsimsiz ürün' : joined;
+    if (primary.isNotEmpty && joined.isEmpty) return primary;
+    if (primary.isEmpty && joined.isEmpty) return 'İsimsiz ürün';
+
+    return primary.isNotEmpty ? '$primary $joined'.trim() : joined;
   }
 
   String _buildDescription(
@@ -294,63 +294,28 @@ class XRexVisualCatalogParser {
   }
 
   String? _extractPrice(String text) {
-    final match = _pricePattern.firstMatch(text);
-    final value = match?.group(0)?.trim();
-    if (value == null || value.isEmpty) return null;
-    return _looksLikePrice(value, text) ? value : null;
-  }
-
-  bool _looksLikePrice(String value, String fullLine) {
-    final normalizedLine = fullLine.toLowerCase();
-    if (RegExp(r'\d{1,2}:\d{2}').hasMatch(normalizedLine)) return false;
-    if (normalizedLine.contains('+') && !normalizedLine.contains('tl')) {
-      return false;
-    }
-    if (normalizedLine.contains('puan') || normalizedLine.contains('yorum')) {
-      return false;
-    }
-
-    final hasCurrency =
-        normalizedLine.contains('tl') ||
-        normalizedLine.contains('try') ||
-        normalizedLine.contains('₺') ||
-        normalizedLine.contains('\$');
-    if (hasCurrency) return true;
-
-    final numeric = _parseNumericPrice(value);
-    return numeric != null && numeric >= 10;
+    return XRexPriceParser.extractPrice(text);
   }
 
   num? _parseNumericPrice(String value) {
-    var normalized =
-        value
-            .replaceAll(RegExp(r'[^0-9,.\s]'), '')
-            .replaceAll(RegExp(r'\s+'), '')
-            .trim();
-    if (normalized.isEmpty) return null;
-
-    final hasComma = normalized.contains(',');
-    final hasDot = normalized.contains('.');
-    if (hasComma && hasDot) {
-      normalized = normalized.replaceAll('.', '').replaceAll(',', '.');
-    } else if (hasComma) {
-      normalized = normalized.replaceAll(',', '.');
-    } else if (hasDot) {
-      final parts = normalized.split('.');
-      if (parts.length > 1 && parts.last.length == 3) {
-        normalized = normalized.replaceAll('.', '');
-      }
-    }
-
-    return num.tryParse(normalized);
+    return XRexPriceParser.parseAmount(value);
   }
 
   String _cleanProductName(String value) {
-    return value
+    var cleaned = value
         .replaceAll(RegExp(r'\s+'), ' ')
         .replaceAll(RegExp(r'^[^\wğüşıöçĞÜŞİÖÇ]+'), '')
         .replaceAll(RegExp(r'[^\wğüşıöçĞÜŞİÖÇ]+$'), '')
         .trim();
+
+    // Remove nonsense OCR fragments (usually all caps with no vowels and mixed symbols)
+    if (cleaned.length > 4 && cleaned == cleaned.toUpperCase() && !cleaned.contains(RegExp(r'[AEIOUÖÜİ]'))) {
+      if (cleaned.replaceAll(RegExp(r'[BCDFGHJKLMNPRSTVYZXWQ]'), '').length > cleaned.length * 0.3) {
+         return '';
+      }
+    }
+
+    return cleaned;
   }
 
   String _inferCategory(String value) {
@@ -521,8 +486,12 @@ class XRexVisualCatalogParser {
     if (normalized.isEmpty) return true;
     if (normalized.length < 2) return true;
 
-    // Single digits/numbers check
+    // Reject lines that are just numbers (unless they look like price)
     if (RegExp(r'^\d+$').hasMatch(normalized)) return true;
+
+    // Reject lines with too many non-alphanumeric chars
+    final nonAlphaNumCount = normalized.replaceAll(RegExp(r'[a-zA-Z0-9ğüşıöçĞÜŞİÖÇ]'), '').length;
+    if (nonAlphaNumCount > normalized.length * 0.5) return true;
 
     // Pure symbol checks
     if (normalized == '\$' || normalized == '₺' || normalized == 'tl') return true;
@@ -530,54 +499,19 @@ class XRexVisualCatalogParser {
     if (RegExp(r'^\W+$').hasMatch(normalized)) return true;
     if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(normalized)) return true;
     if (normalized.contains('★') || normalized.contains('⭐')) return true;
-    if (RegExp(r'^\d+[.,]\d+\s*\(').hasMatch(normalized)) return true;
 
     const noiseTerms = [
-      'arama',
-      'ara',
-      'sepet',
-      'favori',
-      'takip',
-      'kargo',
-      'teslimat',
-      'kupon',
-      'taksit',
-      'puan',
-      'yorum',
-      'ana sayfa',
-      'tüm ürünler',
-      'fırsat',
-      'satıcı',
-      'mağazada ara',
-      'video',
-      'en çok ziyaret',
-      'avantajlı ürün',
-      'menü',
-      'koleksiyon',
-      'tıkla',
-      'kampanya',
-      'paylaş',
-      'beğen',
-      'detay',
-      'indirim',
-      'seçenek',
+      'arama', 'ara', 'sepet', 'favori', 'takip', 'kargo', 'teslimat', 'kupon', 'taksit',
+      'puan', 'yorum', 'ana sayfa', 'tüm ürünler', 'fırsat', 'satıcı', 'mağazada ara',
+      'video', 'en çok ziyaret', 'avantajlı ürün', 'menü', 'koleksiyon', 'tıkla',
+      'kampanya', 'paylaş', 'beğen', 'detay', 'indirim', 'seçenek', 'kdv', 'dahil',
+      'stokta', 'tükendi', 'hızlı gönderim', 'aynı gün', 'kargo bedava',
       // English noise words
-      'shipping',
-      'delivery',
-      'coupon',
-      'rating',
-      'review',
-      'search',
-      'menu',
-      'cart',
-      'free',
-      'discount',
-      'details',
-      'item',
-      'stars',
+      'shipping', 'delivery', 'coupon', 'rating', 'review', 'search', 'menu', 'cart',
+      'free', 'discount', 'details', 'item', 'stars', 'buy', 'now', 'add',
     ];
 
-    return noiseTerms.any(normalized.contains);
+    return noiseTerms.any((term) => normalized == term || normalized.contains(' $term') || normalized.contains('$term '));
   }
 
   String _normalizeKey(String value) {

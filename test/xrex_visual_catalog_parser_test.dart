@@ -186,7 +186,7 @@ void main() {
       final candidates = products.where((p) => p.confidence! < 0.8).toList();
 
       expect(readyProducts.length, 4);
-      expect(candidates.length, 2);
+      expect(candidates.length, 1);
       expect(candidates.any((p) => p.name == 'Kırmızı Ceket'), isTrue);
     });
   });

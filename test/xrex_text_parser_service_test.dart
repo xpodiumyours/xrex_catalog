@@ -60,4 +60,74 @@ void main() {
 
     expect(products, isEmpty);
   });
+
+  test('parses Turkish thousands with comma decimal format', () {
+    final products = service.parseProducts('Ofis koltuğu\n1.250,00 TL');
+
+    expect(products, hasLength(1));
+    expect(products.first.price, '1.250,00 TL');
+  });
+
+  test('parses spaced thousands format', () {
+    final products = service.parseProducts('Ofis koltuğu\n1 250,00 TL');
+
+    expect(products, hasLength(1));
+    expect(products.first.price, '1 250,00 TL');
+  });
+
+  test('ignores discount context lines as price', () {
+    final products = service.parseProducts(
+      'Kadın Çorap\nSepette %20 indirim\n175 TL',
+    );
+
+    expect(products, hasLength(1));
+    expect(products.first.name, 'Kadın Çorap');
+    expect(products.first.price, '175 TL');
+  });
+
+  test('ignores coupon amount lines as price', () {
+    final products = service.parseProducts(
+      'Kadın Çorap\n100 TL Kupon\n175 TL',
+    );
+
+    expect(products, hasLength(1));
+    expect(products.first.price, '175 TL');
+  });
+
+  test('chooses meaningful title lines instead of ui noise', () {
+    final products = service.parseProducts(
+      'Ana Sayfa\nMağazada ara\nQBC\nOfis büro çalışma koltuğu\n175 TL',
+    );
+
+    expect(products, hasLength(1));
+    expect(products.first.name, 'QBC Ofis büro çalışma koltuğu');
+    expect(products.first.sourceLines, ['QBC', 'Ofis büro çalışma koltuğu']);
+  });
+
+  test('filters page numbers and currency-only lines from name buffer', () {
+    final products = service.parseProducts(
+      '1\nTL\nPENTI\nKadın Çorap\n175 TL',
+    );
+
+    expect(products, hasLength(1));
+    expect(products.first.name, 'PENTI Kadın Çorap');
+  });
+
+  test('adds warning when product name spans too many lines', () {
+    final products = service.parseProducts(
+      'QBC\nUltra ergonomik nefes alan fileli ofis çalışma koltuğu\n'
+      'Sırt destekli modern tasarım ev ofis kullanımı\n7.250 TL',
+    );
+
+    expect(products, hasLength(1));
+    expect(
+      products.first.name,
+      'QBC Ultra ergonomik nefes alan fileli ofis çalışma koltuğu '
+      'Sırt destekli modern tasarım ev ofis kullanımı',
+    );
+    expect(
+      products.first.warnings,
+      contains('Ürün adı uzun, kontrol önerilir.'),
+    );
+  });
 }

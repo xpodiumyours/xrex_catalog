@@ -83,6 +83,34 @@ void main() {
     expect(price['isParsed'], true);
   });
 
+  test('parses spaced thousands with comma decimal price', () {
+    final payload = service.buildPayload(
+      sessionWithProducts([
+        XRexDraftProduct(id: 'prod-1', name: 'Ürün', price: '1 250,00 TL'),
+      ]),
+    );
+
+    final product = (payload['products'] as List).first as Map<String, dynamic>;
+    final price = product['price'] as Map<String, dynamic>;
+
+    expect(price['amount'], 1250.0);
+    expect(price['isParsed'], true);
+  });
+
+  test('parses US-style thousands with dot decimal price', () {
+    final payload = service.buildPayload(
+      sessionWithProducts([
+        XRexDraftProduct(id: 'prod-1', name: 'Ürün', price: '1,250.00 TL'),
+      ]),
+    );
+
+    final product = (payload['products'] as List).first as Map<String, dynamic>;
+    final price = product['price'] as Map<String, dynamic>;
+
+    expect(price['amount'], 1250.0);
+    expect(price['isParsed'], true);
+  });
+
   test('keeps unparsed price and adds warning', () {
     final payload = service.buildPayload(
       sessionWithProducts([

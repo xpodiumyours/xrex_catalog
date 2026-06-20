@@ -354,72 +354,125 @@ class XRexProductTable extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: priceControllers[product.id],
-                      decoration: const InputDecoration(
-                        labelText: 'Fiyat',
-                        isDense: true,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final useColumn = constraints.maxWidth < 340;
+
+                  if (useColumn) {
+                    return Column(
+                      children: [
+                        TextFormField(
+                          controller: priceControllers[product.id],
+                          decoration: const InputDecoration(labelText: 'Fiyat', isDense: true),
+                          onChanged: (val) {
+                            product.price = val;
+                            onChanged(product);
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: categoryOptions.contains(product.category) ? product.category : 'Genel',
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Kategori', isDense: true),
+                          dropdownColor: const Color(0xFF090D18),
+                          items: categoryOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (val) { if (val != null) { product.category = val; onChanged(product); } },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          initialValue: product.quantity.toString(),
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Adet', isDense: true),
+                          onChanged: (val) {
+                            final parsed = int.tryParse(val);
+                            if (parsed != null && parsed > 0) {
+                              product.quantity = parsed;
+                              onChanged(product);
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: TextFormField(
+                          controller: priceControllers[product.id],
+                          decoration: const InputDecoration(
+                            labelText: 'Fiyat',
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          ),
+                          onChanged: (val) {
+                            product.price = val;
+                            onChanged(product);
+                          },
+                        ),
                       ),
-                      onChanged: (val) {
-                        product.price = val;
-                        onChanged(product);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 4,
-                    child: DropdownButtonFormField<String>(
-                      value:
-                          categoryOptions.contains(product.category)
-                              ? product.category
-                              : 'Genel',
-                      decoration: const InputDecoration(
-                        labelText: 'Kategori',
-                        isDense: true,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 5,
+                        child: DropdownButtonFormField<String>(
+                          value:
+                              categoryOptions.contains(product.category)
+                                  ? product.category
+                                  : 'Genel',
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Kategori',
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                          ),
+                          dropdownColor: const Color(0xFF090D18),
+                          style: const TextStyle(fontSize: 13, color: Colors.white),
+                          items:
+                              categoryOptions
+                                  .map(
+                                    (category) => DropdownMenuItem(
+                                      value: category,
+                                      child: Text(
+                                        category,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              product.category = val;
+                              onChanged(product);
+                            }
+                          },
+                        ),
                       ),
-                      dropdownColor: const Color(0xFF090D18),
-                      items:
-                          categoryOptions
-                              .map(
-                                (category) => DropdownMenuItem(
-                                  value: category,
-                                  child: Text(category),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          product.category = val;
-                          onChanged(product);
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      initialValue: product.quantity.toString(),
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Adet',
-                        isDense: true,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          initialValue: product.quantity.toString(),
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Adet',
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          ),
+                          onChanged: (val) {
+                            final parsed = int.tryParse(val);
+                            if (parsed != null && parsed > 0) {
+                              product.quantity = parsed;
+                              onChanged(product);
+                            }
+                          },
+                        ),
                       ),
-                      onChanged: (val) {
-                        final parsed = int.tryParse(val);
-                        if (parsed != null && parsed > 0) {
-                          product.quantity = parsed;
-                          onChanged(product);
-                        }
-                      },
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 8),
               TextFormField(
