@@ -24,52 +24,53 @@ class XRexChatBubble extends StatelessWidget {
               if (isBot) _buildAvatar(),
               const SizedBox(width: 8),
               Flexible(
-                child: ClipRRect(
-                  borderRadius: _getBorderRadius(isBot),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isBot
-                            ? const Color(0xFF1E293B).withValues(alpha: 0.8)
-                            : const Color(0xFF06B6D4).withValues(alpha: 0.9),
-                        borderRadius: _getBorderRadius(isBot),
-                        border: Border.all(
-                          color: isBot
-                              ? const Color(0xFF334155)
-                              : Colors.white12,
-                          width: 0.5,
-                        ),
-                      ),
-                      child: message.type == XRexMessageType.productCard && message.associatedProduct != null
-                          ? _buildProductPreview(message.associatedProduct!)
-                          : Text(
-                              message.text,
-                              style: TextStyle(
-                                color: isBot ? Colors.white : Colors.black,
-                                fontSize: 13,
-                                height: 1.4,
-                                fontWeight: isBot ? FontWeight.w400 : FontWeight.w600,
-                              ),
-                            ),
-                    ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isProduct ? 12 : 16,
+                    vertical: isProduct ? 10 : 12
                   ),
+                  decoration: BoxDecoration(
+                    color: isBot
+                        ? const Color(0xFF111827).withValues(alpha: 0.9)
+                        : const Color(0xFF06B6D4),
+                    borderRadius: _getBorderRadius(isBot),
+                    border: isBot
+                        ? Border.all(color: const Color(0xFF1F2937), width: 1)
+                        : null,
+                    boxShadow: [
+                      if (!isBot) BoxShadow(
+                        color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  ),
+                  child: isProduct
+                      ? _buildProductPreview(message.associatedProduct!)
+                      : Text(
+                          message.text,
+                          style: TextStyle(
+                            color: isBot ? const Color(0xFFE5E7EB) : Colors.black,
+                            fontSize: 14,
+                            height: 1.5,
+                            fontWeight: isBot ? FontWeight.w400 : FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               if (!isBot) _buildUserAvatar(),
             ],
           ),
           Padding(
             padding: EdgeInsets.only(
               top: 4,
-              left: isBot ? 48 : 0,
+              left: isBot ? 52 : 0,
               right: isBot ? 0 : 48
             ),
             child: Text(
               _formatTime(message.timestamp),
-              style: const TextStyle(color: Colors.white24, fontSize: 10),
+              style: const TextStyle(color: Colors.white10, fontSize: 9, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -78,37 +79,51 @@ class XRexChatBubble extends StatelessWidget {
   }
 
   Widget _buildProductPreview(XRexDraftProduct product) {
-    return Container(
-      width: double.infinity,
+    return IntrinsicWidth(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_getCategoryIcon(product.category), size: 14, color: const Color(0xFF06B6D4)),
-              const SizedBox(width: 8),
-              Expanded(
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(_getCategoryIcon(product.category), size: 12, color: const Color(0xFF06B6D4)),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
                 child: Text(
                   product.name,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "${product.category} • ${product.quantity} Adet",
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
-              ),
+              const SizedBox(width: 16),
               Text(
                 product.price.isNotEmpty ? "${product.price} TL" : "Fiyat Yok",
-                style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.w900, fontSize: 14),
+                style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.w900, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               const SizedBox(width: 26),
+               Text(
+                product.category,
+                style: const TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              const Text(
+                "Düzenle",
+                style: TextStyle(color: Color(0xFF06B6D4), fontSize: 10, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
               ),
             ],
           ),
@@ -119,13 +134,13 @@ class XRexChatBubble extends StatelessWidget {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'Gözlük': return Icons.remove_red_eye_outlined;
-      case 'Giyim': return Icons.checkroom_outlined;
-      case 'Aktar ürünleri': return Icons.eco_outlined;
-      case 'Hırdavat': return Icons.build_outlined;
-      case 'Kozmetik': return Icons.face_outlined;
-      case 'Kırtasiye': return Icons.edit_note_outlined;
-      default: return Icons.inventory_2_outlined;
+      case 'Gözlük': return Icons.remove_red_eye_rounded;
+      case 'Giyim': return Icons.checkroom_rounded;
+      case 'Aktar ürünleri': return Icons.eco_rounded;
+      case 'Hırdavat': return Icons.build_rounded;
+      case 'Kozmetik': return Icons.face_rounded;
+      case 'Kırtasiye': return Icons.edit_note_rounded;
+      default: return Icons.inventory_2_rounded;
     }
   }
 
@@ -134,32 +149,33 @@ class XRexChatBubble extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF22D3EE), Color(0xFF0EA5E9)]),
+        color: const Color(0xFF1F2937),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF374151)),
       ),
-      child: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF04111D)),
+      child: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF06B6D4)),
     );
   }
 
   Widget _buildUserAvatar() {
     return Container(
-      width: 32,
-      height: 32,
+      width: 28,
+      height: 28,
       decoration: BoxDecoration(
         color: const Color(0xFF1F2A3D),
-        borderRadius: BorderRadius.circular(10),
+        shape: BoxShape.circle,
         border: Border.all(color: Colors.white10),
       ),
-      child: const Icon(Icons.person_outline, size: 18, color: Colors.white70),
+      child: const Icon(Icons.person_rounded, size: 14, color: Colors.white24),
     );
   }
 
   BorderRadius _getBorderRadius(bool isBot) {
     return BorderRadius.only(
-      topLeft: const Radius.circular(18),
-      topRight: const Radius.circular(18),
-      bottomLeft: Radius.circular(isBot ? 4 : 18),
-      bottomRight: Radius.circular(isBot ? 18 : 4),
+      topLeft: const Radius.circular(14),
+      topRight: const Radius.circular(14),
+      bottomLeft: Radius.circular(isBot ? 2 : 14),
+      bottomRight: Radius.circular(isBot ? 14 : 2),
     );
   }
 

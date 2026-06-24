@@ -347,7 +347,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF090D18),
+      backgroundColor: const Color(0xFF030712),
       body: SafeArea(
         child: Column(
           children: [
@@ -361,7 +361,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
                 ],
               ),
             ),
-            if (activeTabIndex == 0) _buildChatInput(),
+            if (activeTabIndex == 0) _buildFloatingChatInput(),
             if (activeTabIndex == 1 && products.isNotEmpty) _buildBottomActionOverlay(),
           ],
         ),
@@ -385,7 +385,7 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
               color: const Color(0xFF06B6D4),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Center(child: Text("X", style: TextStyle(color: Color(0xFF090D18), fontWeight: FontWeight.black, fontSize: 16))),
+            child: const Center(child: Text("X", style: TextStyle(color: Color(0xFF090D18), fontWeight: FontWeight.w900, fontSize: 16))),
           ),
           const SizedBox(width: 10),
           const Text("XRex", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.5, color: Colors.white)),
@@ -573,49 +573,59 @@ class _XRexHomeScreenState extends State<XRexHomeScreen> {
     );
   }
 
-  Widget _buildChatInput() {
+  Widget _buildFloatingChatInput() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E293B),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: chatController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "Bir şeyler yazın...",
-                hintStyle: const TextStyle(color: Colors.white24),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111827),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF1F2937)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: chatController,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: "Bir şeyler yazın...",
+                  hintStyle: TextStyle(color: Colors.white10),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  isDense: true,
+                ),
+                onSubmitted: (val) {
+                  if (val.trim().isNotEmpty) {
+                    _addUserMessage(val);
+                    chatController.clear();
+                  }
+                },
               ),
-              onSubmitted: (val) {
-                if (val.trim().isNotEmpty) {
-                  _addUserMessage(val);
-                  chatController.clear();
-                }
-              },
             ),
-          ),
-          const SizedBox(width: 12),
-          CircleAvatar(
-            backgroundColor: const Color(0xFF06B6D4),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.black),
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 if (chatController.text.trim().isNotEmpty) {
                   _addUserMessage(chatController.text);
                   chatController.clear();
                 }
               },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF06B6D4),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_upward_rounded, color: Colors.black, size: 20),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
