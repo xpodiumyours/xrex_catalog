@@ -45,161 +45,109 @@ class XRexVisualCatalogParser {
   }
 
   List<XRexParsedProduct> _parseByCoordinates(List<_LineCandidate> lines) {
-    // 1. Group lines into columns based on horizontal proximity.
-    final columns = <List<_LineCandidate>>[];
-    for (final line in lines) {
-      bool placed = false;
-      for (final col in columns) {
-        if (_isSameProductColumn(line, col.first)) {
-          col.add(line);
-          placed = true;
-          break;
-        }
-      }
-      if (!placed) {
-        columns.add([line]);
-      }
-    }
-
     final products = <XRexParsedProduct>[];
-    final seenProducts = <String>{};
+    final seenPriceKeys = <String>{};
+    final usedContentKeys = <String>{};
 
-    for (final col in columns) {
-      // Sort lines in column by Y ascending (top to bottom)
-      col.sort((a, b) => a.centerY.compareTo(b.centerY));
-
-      final priceLines =
-          col.where((line) => _extractPrice(line.text) != null).toList();
-      final contentLines =
-          col.where((line) => _extractPrice(line.text) == null).toList();
-
-      final usedPriceKeys = <String>{};
-      final usedContentKeys = <String>{};
-
-      for (final priceLine in priceLines) {
-        if (usedPriceKeys.contains(priceLine.key)) continue;
-        if (_isLikelyOldPrice(priceLine, priceLines)) continue;
-
-        final price = _extractPrice(priceLine.text);
-        if (price == null) continue;
-        final priceAmount = _parseNumericPrice(price);
-
-        final oldPriceLine = _nearestOldPriceLine(priceLine, priceLines);
-        final oldPrice = oldPriceLine != null ? _extractPrice(oldPriceLine.text) : null;
-
-        final nameLines = contentLines
-            .where(
-              (line) =>
-                  !usedContentKeys.contains(line.key) &&
-                  line.centerY < priceLine.centerY &&
-                  priceLine.centerY - line.centerY <= 300 &&
-                  !_isNoiseLine(line.text),
-            )
-            .toList()
-          ..sort((a, b) => b.centerY.compareTo(a.centerY));
-
-        final selectedNameLines = nameLines.take(3).toList().reversed.toList();
-        final sameLineName = _cleanProductName(
-          priceLine.text.replaceFirst(price, ''),
-        );
-        final name = _buildName(sameLineName, selectedNameLines);
-
-        for (final nl in selectedNameLines) {
-          usedContentKeys.add(nl.key);
-        }
-
-        final sourceTexts = <String>[
-          ...selectedNameLines.map((line) => line.text),
-          priceLine.text,
-          if (oldPriceLine != null) oldPriceLine.text,
-        ];
-        final category = _inferCategory('$name ${sourceTexts.join(' ')}');
-        final key = '${_normalizeKey(name)}|${_normalizeKey(price)}';
-        if (!seenProducts.add(key)) continue;
-
-        usedPriceKeys.add(priceLine.key);
-        if (oldPriceLine != null) usedPriceKeys.add(oldPriceLine.key);
-
-        final hasValidName = name.trim().isNotEmpty && name != 'İsimsiz ürün' && !_isNoiseLine(name);
-        final hasValidPrice = price.trim().isNotEmpty;
-        final isReady = hasValidName && hasValidPrice;
-
-        final warnings = <String>[];
-        if (!isReady) {
-          if (!hasValidName) warnings.add('Ürün adı güvenli okunamadı.');
-          if (!hasValidPrice) warnings.add('Fiyat güvenli okunamadı.');
-        }
-        if (category == 'Genel') {
-          warnings.add('Kategori kullanıcı kontrolü istiyor.');
-        }
-
-        products.add(
-          XRexParsedProduct(
-            name: name,
-            price: price,
-            oldPrice: oldPrice ?? '',
-            description: _buildDescription(selectedNameLines, priceLine, col),
-            category: category,
-            sourceRect: _unionRects([
-              ...selectedNameLines.map((line) => line.boundingBox),
-              priceLine.boundingBox,
-              if (oldPriceLine != null) oldPriceLine.boundingBox,
-            ]),
-            confidence: isReady ? 0.85 : 0.30,
-            sourceLines: sourceTexts,
-            warnings: warnings,
-            origin: 'visual_ocr',
-            priceAmount: priceAmount?.toDouble(),
-          ),
-        );
-      }
-
-      // Add unpaired non-noise lines as candidates
-      for (final line in contentLines) {
-        if (usedContentKeys.contains(line.key)) continue;
-        if (_isNoiseLine(line.text)) continue;
-
-        final name = _cleanProductName(line.text);
-        if (name.isEmpty) continue;
-
-        final key = '${_normalizeKey(name)}|empty_price';
-        if (!seenProducts.add(key)) continue;
-
-        usedContentKeys.add(line.key);
-
-        products.add(
-          XRexParsedProduct(
-            name: name,
-            price: '',
-            oldPrice: '',
-            description: '',
-            category: _inferCategory(name),
-            sourceRect: line.boundingBox,
-            confidence: 0.30,
-            sourceLines: [line.text],
-            warnings: const ['Fiyat güvenli okunamadı. İnceleme adayı.'],
-            origin: 'visual_ocr',
-            priceAmount: null,
-          ),
-        );
-      }
-    }
-
-    // Sort products by visual position (row-by-row, left-to-right)
-    products.sort((a, b) {
-      if (a.sourceRect == null || b.sourceRect == null) return 0;
-      final aCenterY = a.sourceRect!.top + a.sourceRect!.height / 2;
-      final bCenterY = b.sourceRect!.top + b.sourceRect!.height / 2;
-      final yDiff = (aCenterY - bCenterY).abs();
-      if (yDiff > 100) {
-        return aCenterY.compareTo(bCenterY);
-      }
-      final aCenterX = a.sourceRect!.left + a.sourceRect!.width / 2;
-      final bCenterX = b.sourceRect!.left + b.sourceRect!.width / 2;
-      return aCenterX.compareTo(bCenterX);
+    // 1. Extract all potential prices first
+    final priceLines = lines.where((line) => _extractPrice(line.text) != null).toList();
+    // Sort prices: Top-to-bottom, then left-to-right
+    priceLines.sort((a, b) {
+      if ((a.centerY - b.centerY).abs() > 30) return a.centerY.compareTo(b.centerY);
+      return a.centerX.compareTo(b.centerX);
     });
 
+    for (final priceLine in priceLines) {
+      if (seenPriceKeys.contains(priceLine.key)) continue;
+
+      final price = _extractPrice(priceLine.text);
+      if (price == null) continue;
+      final priceAmount = _parseNumericPrice(price);
+
+      // 2. Find product name candidates ABOVE this price tag
+      // In supermarket shelves, price is almost always BELOW the product.
+      final candidatesAbove = lines.where((l) {
+        if (l.key == priceLine.key || usedContentKeys.contains(l.key)) return false;
+        if (_extractPrice(l.text) != null) return false;
+        if (_isNoiseLine(l.text)) return false;
+
+        // Must be above and within a horizontal "corridor"
+        final isAbove = l.centerY < priceLine.centerY && (priceLine.centerY - l.centerY) < 450;
+        final hDist = (l.centerX - priceLine.centerX).abs();
+        final corridorWidth = math.max(l.boundingBox.width, priceLine.boundingBox.width) * 0.8 + 50;
+
+        return isAbove && hDist < corridorWidth;
+      }).toList();
+
+      // Sort by proximity to the price (bottom-up)
+      candidatesAbove.sort((a, b) => b.centerY.compareTo(a.centerY));
+
+      // 3. Look for Brand (often slightly further away or repeated)
+      final brandLine = lines.where((l) {
+        final isBrand = _isBrandName(l.text);
+        if (!isBrand) return false;
+        final isNear = (l.centerX - priceLine.centerX).abs() < 200 && (priceLine.centerY - l.centerY) < 600;
+        return isNear;
+      }).toList();
+
+      String brandPrefix = "";
+      if (brandLine.isNotEmpty) {
+        brandLine.sort((a, b) => (a.centerY - priceLine.centerY).abs().compareTo((b.centerY - priceLine.centerY).abs()));
+        brandPrefix = brandLine.first.text;
+      }
+
+      // Construct name from lines closest to price
+      final selectedLines = candidatesAbove.take(3).toList().reversed.toList();
+      String name = _buildName("", selectedLines);
+
+      if (brandPrefix.isNotEmpty && !name.toLowerCase().contains(brandPrefix.toLowerCase())) {
+        name = "$brandPrefix $name";
+      }
+
+      if (name == "İsimsiz ürün" || name.isEmpty) {
+        // Fallback: use text on the same line as price if name is still empty
+        final sameLine = lines.where((l) => l.key != priceLine.key && (l.centerY - priceLine.centerY).abs() < 20).toList();
+        if (sameLine.isNotEmpty) {
+          name = _buildName(name, sameLine);
+        }
+      }
+
+      for (final l in selectedLines) {
+        usedContentKeys.add(l.key);
+      }
+      seenPriceKeys.add(priceLine.key);
+
+      final hasValidName = name.trim().isNotEmpty && name != 'İsimsiz ürün';
+      final category = _inferCategory("$name ${priceLine.text}");
+
+      products.add(
+        XRexParsedProduct(
+          name: name,
+          price: price,
+          oldPrice: '',
+          description: "Raf konumu tespiti",
+          category: category,
+          sourceRect: _unionRects([...selectedLines.map((e) => e.boundingBox), priceLine.boundingBox]),
+          confidence: hasValidName ? 0.90 : 0.40,
+          sourceLines: [...selectedLines.map((e) => e.text), priceLine.text],
+          warnings: hasValidName ? [] : ["Ürün adı belirsiz."],
+          origin: 'visual_shelf_parser',
+          priceAmount: priceAmount?.toDouble(),
+        ),
+      );
+    }
+
     return products;
+  }
+
+  bool _isBrandName(String text) {
+    final lower = text.toLowerCase().trim();
+    const brands = [
+      'ülker', 'eti', 'dankek', 'biscolata', 'torku', 'şölen', 'nestle', 'tadelle',
+      'biskrem', 'hanımeller', 'halley', 'ikram', 'probis', 'çokoprens', 'çizi',
+      'bebe', 'cicibebe', 'luppo', 'milka', 'şerefe', 'uno', 'laviva'
+    ];
+    return brands.any((brand) => lower.contains(brand));
   }
 
   _LineCandidate? _nearestOldPriceLine(
@@ -308,11 +256,15 @@ class XRexVisualCatalogParser {
         .replaceAll(RegExp(r'[^\wğüşıöçĞÜŞİÖÇ]+$'), '')
         .trim();
 
+    // Reject short junk like "IAUM", "X1", ".."
+    if (cleaned.length < 3 && !RegExp(r'\d').hasMatch(cleaned)) return '';
+
     // Remove nonsense OCR fragments (usually all caps with no vowels and mixed symbols)
-    if (cleaned.length > 4 && cleaned == cleaned.toUpperCase() && !cleaned.contains(RegExp(r'[AEIOUÖÜİ]'))) {
-      if (cleaned.replaceAll(RegExp(r'[BCDFGHJKLMNPRSTVYZXWQ]'), '').length > cleaned.length * 0.3) {
-         return '';
-      }
+    // Or strings with high consonant-to-length ratio that aren't common abbreviations
+    final vowels = RegExp(r'[aeiouöüıiAEIOUÖÜİI]');
+    if (cleaned.length > 3 && !cleaned.contains(vowels)) {
+       // If it's not a known brand/short word, it's likely junk
+       if (!_isBrandName(cleaned)) return '';
     }
 
     return cleaned;
@@ -491,7 +443,7 @@ class XRexVisualCatalogParser {
 
     // Reject lines with too many non-alphanumeric chars
     final nonAlphaNumCount = normalized.replaceAll(RegExp(r'[a-zA-Z0-9ğüşıöçĞÜŞİÖÇ]'), '').length;
-    if (nonAlphaNumCount > normalized.length * 0.5) return true;
+    if (nonAlphaNumCount > normalized.length * 0.4) return true;
 
     // Pure symbol checks
     if (normalized == '\$' || normalized == '₺' || normalized == 'tl') return true;
@@ -505,7 +457,8 @@ class XRexVisualCatalogParser {
       'puan', 'yorum', 'ana sayfa', 'tüm ürünler', 'fırsat', 'satıcı', 'mağazada ara',
       'video', 'en çok ziyaret', 'avantajlı ürün', 'menü', 'koleksiyon', 'tıkla',
       'kampanya', 'paylaş', 'beğen', 'detay', 'indirim', 'seçenek', 'kdv', 'dahil',
-      'stokta', 'tükendi', 'hızlı gönderim', 'aynı gün', 'kargo bedava',
+      'stokta', 'tükendi', 'hızlı gönderim', 'aynı gün', 'kargo bedava', 'adet', 'paket',
+      'yeni', 'popüler', 'stok', 'fiyat',
       // English noise words
       'shipping', 'delivery', 'coupon', 'rating', 'review', 'search', 'menu', 'cart',
       'free', 'discount', 'details', 'item', 'stars', 'buy', 'now', 'add',

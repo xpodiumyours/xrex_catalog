@@ -2,15 +2,17 @@ class XRexPriceParser {
   XRexPriceParser._();
 
   static final RegExp pricePattern = RegExp(
-    r'(?:sepette\s*)?(?:(?:₺|TL|TRY)\s*)?(?:\d{1,3}(?:[.,\s]\d{3})+|\d{1,9})(?:[.,]\d{1,2})?\s*(?:₺|TL|TRY|tl|try)?',
+    r'(?:sepette\s*)?(?:(?:₺|TL|TRY)\s*)?(?:\d{1,3}(?:[.,\s]\d{3})*|\d{1,9})(?:[.,]\d{1,2})?\s*(?:₺|TL|TRY|tl|try)?',
     caseSensitive: false,
   );
 
   static String? extractPrice(String text) {
-    final match = pricePattern.firstMatch(text);
+    // Some OCR errors read '70,00' as '70. 00' or similar
+    final sanitizedText = text.replaceAll(RegExp(r'\s(?=\d{2}(?!\d))'), '');
+    final match = pricePattern.firstMatch(sanitizedText);
     final value = match?.group(0)?.trim();
     if (value == null || value.isEmpty) return null;
-    return looksLikePrice(value, text) ? value : null;
+    return looksLikePrice(value, sanitizedText) ? value : null;
   }
 
   static bool looksLikePrice(String value, String fullLine) {

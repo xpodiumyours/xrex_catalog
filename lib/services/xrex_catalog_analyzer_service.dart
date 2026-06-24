@@ -61,21 +61,14 @@ class XRexCatalogAnalyzerService {
         final overlap = _horizontalOverlap(region.boundingBox, lineBox);
         if (overlap <= 0) return false;
 
-        // Prevent cross-column matching by verifying center proximity or a significant overlap fraction
-        final lineCenter = (lineBox.left + lineBox.right) / 2;
-        final isHorizontallyAligned = lineCenter >= region.boundingBox.left - 20 &&
-            lineCenter <= region.boundingBox.right + 20;
+        // In retail, product names/prices are inside or very close to the visual region
+        final isInside = lineBox.top >= region.boundingBox.top - 50 &&
+            lineBox.bottom <= region.boundingBox.bottom + 150;
 
-        if (!isHorizontallyAligned && overlap < math.min(lineBox.width, region.boundingBox.width) * 0.3) {
-          return false;
-        }
+        final hDist = (line.centerX - region.centerX).abs();
+        final isHorizontallyAligned = hDist < region.boundingBox.width * 0.7;
 
-        // Check if the text resides inside the box or immediately below
-        final isInside = lineBox.top >= region.boundingBox.top - 20 &&
-            lineBox.bottom <= region.boundingBox.bottom + 20;
-        final isBelow = lineBox.top >= region.boundingBox.bottom - 20 &&
-            lineBox.top - region.boundingBox.bottom <= 120;
-        return isInside || isBelow;
+        return isInside && isHorizontallyAligned;
       }).toList();
 
       for (final line in matchedOcr) {

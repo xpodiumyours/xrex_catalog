@@ -13,6 +13,9 @@ class XRexDetectedRegion {
     this.confidence,
   });
 
+  double get centerX => boundingBox.left + (boundingBox.width / 2);
+  double get centerY => boundingBox.top + (boundingBox.height / 2);
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
