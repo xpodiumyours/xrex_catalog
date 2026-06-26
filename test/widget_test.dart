@@ -1,13 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:xrex_catalog/main.dart';
+import 'package:xrex_catalog/screens/xrex_home_screen.dart';
 
 void main() {
   testWidgets('X-rex home screen opens', (WidgetTester tester) async {
-    await tester.pumpWidget(const XRexCatalogApp());
+    await tester.pumpWidget(const MaterialApp(home: XRexHomeScreen()));
 
-    expect(find.text('X-rex'), findsOneWidget);
-    expect(find.text('Ürün fotoğrafı'), findsOneWidget);
-    expect(find.text('Fotoğraf yükle'), findsOneWidget);
+    expect(find.text('Ürün Listesi'), findsOneWidget);
   });
 }

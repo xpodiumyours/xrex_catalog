@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 class XRexPriceParser {
   XRexPriceParser._();
 
@@ -6,9 +8,15 @@ class XRexPriceParser {
     caseSensitive: false,
   );
 
+  static final RegExp _spaceDigitPattern = RegExp(r'\s(?=\d{2}(?!\d))');
+  static final RegExp _timePattern = RegExp(r'\d{1,2}:\d{2}');
+  static final RegExp _currencyJunkPattern = RegExp(r'sepette|tl|try|₺|\$', caseSensitive: false);
+  static final RegExp _multipleSpacesPattern = RegExp(r'\s+');
+  static final RegExp _digitPresencePattern = RegExp(r'\d');
+
   static String? extractPrice(String text) {
     // Some OCR errors read '70,00' as '70. 00' or similar
-    final sanitizedText = text.replaceAll(RegExp(r'\s(?=\d{2}(?!\d))'), '');
+    final sanitizedText = text.replaceAll(_spaceDigitPattern, '');
     final match = pricePattern.firstMatch(sanitizedText);
     final value = match?.group(0)?.trim();
     if (value == null || value.isEmpty) return null;
@@ -23,7 +31,8 @@ class XRexPriceParser {
         normalizedLine.contains('₺') ||
         normalizedLine.contains('\$');
 
-    if (RegExp(r'\d{1,2}:\d{2}').hasMatch(normalizedLine)) return false;
+    if (_timePattern.hasMatch(normalizedLine)) return false;
+    if (normalizedLine.contains('★') || normalizedLine.contains('⭐')) return false;
     if (normalizedLine.contains('puan') || normalizedLine.contains('yorum')) {
       return false;
     }
@@ -43,7 +52,7 @@ class XRexPriceParser {
     if (numeric == null) return false;
     if (hasCurrency) return true;
 
-    return numeric >= 10;
+    return numeric >= 4;
   }
 
   static num? parseAmount(String rawPrice) {
@@ -51,13 +60,13 @@ class XRexPriceParser {
     final source = match?.group(0) ?? rawPrice;
 
     var normalized = source
-        .replaceAll(RegExp(r'sepette|tl|try|₺|\$', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(_currencyJunkPattern, '')
+        .replaceAll(_multipleSpacesPattern, ' ')
         .trim();
     if (normalized.isEmpty) return null;
 
     normalized = normalized.replaceAll(' ', '');
-    if (!RegExp(r'\d').hasMatch(normalized)) return null;
+    if (!_digitPresencePattern.hasMatch(normalized)) return null;
 
     final lastComma = normalized.lastIndexOf(',');
     final lastDot = normalized.lastIndexOf('.');

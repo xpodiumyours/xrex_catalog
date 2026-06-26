@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import '../models/xrex_parsed_product.dart';
 import '../models/xrex_text_candidate.dart';
 import 'xrex_price_parser.dart';
@@ -16,7 +18,7 @@ class XRexTextParserService {
     final candidates = <XRexTextCandidate>[];
     final seen = <String>{};
 
-    for (final line in normalized.split(RegExp(r'\r?\n'))) {
+    for (final line in normalized.split(_lineBreakPattern)) {
       final value = XRexPriceParser.extractPrice(line);
       if (value == null || value.isEmpty) continue;
 
@@ -26,7 +28,7 @@ class XRexTextParserService {
       candidates.add(
         XRexTextCandidate(
           id: 'price_${candidates.length}_${value.length}',
-          label: 'Fiyat adayı',
+          label: 'Fiyat aday\u{0131}',
           value: value,
           type: XRexTextCandidateType.price,
         ),
@@ -34,7 +36,7 @@ class XRexTextParserService {
     }
 
     final textLines = normalized
-        .split(RegExp(r'\r?\n'))
+        .split(_lineBreakPattern)
         .map((line) => line.trim())
         .where((line) => line.length >= 3)
         .take(6);
@@ -52,7 +54,7 @@ class XRexTextParserService {
       candidates.add(
         XRexTextCandidate(
           id: 'text_${candidates.length}_${cleaned.length}',
-          label: 'Metin adayı',
+          label: 'Metin aday\u{0131}',
           value: cleaned,
           type: XRexTextCandidateType.text,
         ),
@@ -127,12 +129,28 @@ class XRexTextParserService {
       products.add(pendingProduct);
     }
 
+    if (products.isEmpty) {
+      for (final line in lines) {
+        if (_isNoiseLine(line)) continue;
+        final cleanName = _normalizeWhitespace(line);
+        if (cleanName.length > 2) {
+          products.add(XRexParsedProduct(
+            name: cleanName,
+            price: '',
+            description: 'Metinden fiyats\u{0131}z \u{00fc}r\u{00fc}n tespiti',
+            sourceLines: [line],
+            origin: 'text_parser_priceless',
+          ));
+        }
+      }
+    }
+
     return products;
   }
 
   List<String> _cleanLines(String rawText) {
     return rawText
-        .split(RegExp(r'\r?\n'))
+        .split(_lineBreakPattern)
         .map(_normalizeWhitespace)
         .where((line) => line.isNotEmpty)
         .toList();
@@ -154,9 +172,9 @@ class XRexTextParserService {
             .toList();
     if (candidates.isEmpty) {
       return const _NameSelectionResult(
-        name: 'İsimsiz ürün',
+        name: '\u{0130}simsiz \u{00fc}r\u{00fc}n',
         sourceLines: [],
-        warnings: ['Ürün adı güvenli seçilemedi.'],
+        warnings: ['\u{00dc}r\u{00fc}n ad\u{0131} g\u{00fc}venli se\u{00e7}ilemedi.'],
       );
     }
 
@@ -184,7 +202,7 @@ class XRexTextParserService {
 
     final name = _normalizeWhitespace(selectedLines.join(' '));
     return _NameSelectionResult(
-      name: name.isEmpty ? 'İsimsiz ürün' : name,
+      name: name.isEmpty ? '\u{0130}simsiz \u{00fc}r\u{00fc}n' : name,
       sourceLines: selectedLines,
       warnings: _buildNameWarnings(selectedLines, name),
     );
@@ -193,7 +211,7 @@ class XRexTextParserService {
   List<String> _buildNameWarnings(List<String> selectedLines, String name) {
     final warnings = <String>[];
     if (selectedLines.length >= _maxCombinedNameLines || name.length > _longNameThreshold) {
-      warnings.add('Ürün adı uzun, kontrol önerilir.');
+      warnings.add('\u{00dc}r\u{00fc}n ad\u{0131} uzun, kontrol \u{00f6}nerilir.');
     }
     return warnings;
   }
@@ -207,15 +225,26 @@ class XRexTextParserService {
     if (candidateWords <= 8 && anchorWords <= 8 && candidate.length <= 60) {
       return true;
     }
-
     return false;
   }
+
+  static final RegExp _lineBreakPattern = RegExp(r'\r?\n');
+  static final RegExp _turkishLettersPattern = RegExp('[A-Za-z\u{00c7}\u{011e}\u{0130}\u{00d6}\u{015e}\u{00dc}\u{00e7}\u{011f}\u{0131}\u{00f6}\u{015f}\u{00fc}]');
+  static final RegExp _digitPattern = RegExp(r'\d');
+  static final RegExp _upperLettersPattern = RegExp('[A-Z\u{00c7}\u{011e}\u{0130}\u{00d6}\u{015e}\u{00dc}]');
+  static final RegExp _lowerLettersPattern = RegExp('[a-z\u{00e7}\u{011f}\u{0131}\u{00f6}\u{015f}\u{00fc}]');
+  static final RegExp _multipleSpacesPattern = RegExp(r'\s+');
+  static final RegExp _onlySymbolsPattern = RegExp(r'^\W+$');
+  static final RegExp _onlyDigitsPattern = RegExp(r'^\d+$');
+  static final RegExp _slashDigitsPattern = RegExp(r'^\d+/\d+$');
+  static final RegExp _timePattern = RegExp(r'^\d{1,2}:\d{2}$');
+  static final RegExp _currencyJunkPattern = RegExp(r'^(tl|try|₺)$', caseSensitive: false);
 
   int _scoreNameLine(String line, int distanceFromPrice) {
     var score = 0;
     final normalized = _normalizeWhitespace(line);
-    final letterCount = RegExp(r'[A-Za-zÇĞİÖŞÜçğıöşü]').allMatches(normalized).length;
-    final digitCount = RegExp(r'\d').allMatches(normalized).length;
+    final letterCount = _turkishLettersPattern.allMatches(normalized).length;
+    final digitCount = _digitPattern.allMatches(normalized).length;
     final wordCount = normalized.split(' ').where((part) => part.isNotEmpty).length;
 
     if (letterCount >= 3) score += 5;
@@ -239,32 +268,29 @@ class XRexTextParserService {
     final words = normalized.split(' ').where((part) => part.isNotEmpty).toList();
     if (words.length > 3) return false;
 
-    final uppercaseLetters =
-        RegExp(r'[A-ZÇĞİÖŞÜ]').allMatches(normalized).length;
-    final lowercaseLetters =
-        RegExp(r'[a-zçğıöşü]').allMatches(normalized).length;
+    final uppercaseLetters = _upperLettersPattern.allMatches(normalized).length;
+    final lowercaseLetters = _lowerLettersPattern.allMatches(normalized).length;
 
     return uppercaseLetters >= 2 && lowercaseLetters == 0;
   }
 
   String _normalizeWhitespace(String line) {
-    return line.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return line.trim().replaceAll(_multipleSpacesPattern, ' ');
   }
 
   bool _isNoiseLine(String line) {
     final normalized = _normalizeWhitespace(line).toLowerCase();
     if (normalized.length < 2) return true;
-    if (RegExp(r'^\W+$').hasMatch(normalized)) return true;
-    if (RegExp(r'^\d+$').hasMatch(normalized)) return true;
-    if (RegExp(r'^\d+/\d+$').hasMatch(normalized)) return true;
-    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(normalized)) return true;
-    if (RegExp(r'^(tl|try|₺)$', caseSensitive: false).hasMatch(normalized)) {
-      return true;
-    }
+    if (_onlySymbolsPattern.hasMatch(normalized)) return true;
+    if (_onlyDigitsPattern.hasMatch(normalized)) return true;
+    if (_slashDigitsPattern.hasMatch(normalized)) return true;
+    if (_timePattern.hasMatch(normalized)) return true;
+    if (_currencyJunkPattern.hasMatch(normalized)) return true;
+
     if (normalized.contains('%')) return true;
     const noiseTerms = [
       'ana sayfa',
-      'mağazada ara',
+      'ma\u{011f}azada ara',
       'magazada ara',
       'favoriler',
       'favori',
@@ -278,11 +304,11 @@ class XRexTextParserService {
       'teslimat',
       'bedava',
       'taksit',
-      'hızlı teslimat',
+      'h\u{0131}zl\u{0131} teslimat',
       'hizli teslimat',
-      'video ürün',
-      'flash ürün',
-      'flaş ürün',
+      'video \u{00fc}r\u{00fc}n',
+      'flash \u{00fc}r\u{00fc}n',
+      'fla\u{015f} \u{00fc}r\u{00fc}n',
     ];
     if (noiseTerms.any(normalized.contains)) return true;
     return false;

@@ -8,6 +8,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>X-rex Catalog</title>
   <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    window.runOcr = function(base64Image) {
+      Tesseract.recognize(base64Image, 'tur', {
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js'
+      }).then(function(result) {
+        if (window.__onOcrComplete) {
+          window.__onOcrComplete(JSON.stringify({
+            text: result.data.text,
+            lines: result.data.lines.map(line => ({
+              text: line.text,
+              x0: line.bbox.x0,
+              y0: line.bbox.y0,
+              x1: line.bbox.x1,
+              y1: line.bbox.y1
+            }))
+          }));
+        }
+      }).catch(function(e) {
+        console.error("Tesseract error:", e);
+        if (window.__onOcrComplete) {
+          window.__onOcrComplete(JSON.stringify({ text: "", lines: [] }));
+        }
+      });
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

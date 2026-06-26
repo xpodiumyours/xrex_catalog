@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -11,7 +13,7 @@ class XRexCatalogService {
   const XRexCatalogService();
 
   List<XRexDraftProduct> validProducts(List<XRexDraftProduct> products) {
-    return products.where((product) => !product.isBlank).toList();
+    return products.where((product) => !product.isBlank && product.isApproved).toList();
   }
 
   Map<String, dynamic> buildPayload(XRexCatalogSession session) {

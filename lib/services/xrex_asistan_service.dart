@@ -1,4 +1,3 @@
-import 'dart:math';
 import '../models/xrex_chat_message.dart';
 import '../models/xrex_draft_product.dart';
 import 'xrex_price_parser.dart';
@@ -15,7 +14,7 @@ class XRexAsistanService {
       if (amount != null && activeProduct != null) {
         activeProduct.price = amount.toString();
         return XRexChatMessage(
-          text: "Tamam, ${activeProduct.name} ürününün fiyatını ${amount} TL olarak güncelledim. Başka bir değişiklik var mı?",
+          text: "Tamam, ${activeProduct.name} ürününün fiyatını $amount TL olarak güncelledim. Başka bir değişiklik var mı?",
           type: XRexMessageType.actionResult,
           quickReplies: [
             const XRexQuickReply(label: "Kataloğu Bitir", payload: "EXPORT_JSON"),
@@ -36,15 +35,13 @@ class XRexAsistanService {
     // 3. General Help / Greetings / Action Keywords
     if (_containsAny(lower, ['merhaba', 'selam', 'hey', 'nasılsın', 'başla'])) {
       return XRexChatMessage(
-        text: "Selam! Ben XRex Asistan. Fotoğrafını çektiğin ürünleri senin için hızlıca kataloğa dönüştürebilirim. Başlamak için bir fotoğraf yükle!",
-        quickReplies: [const XRexQuickReply(label: "Fotoğraf Yükle", payload: "PICK_IMAGE")],
+        text: "Selam! Ben XRex Asistan. Fotoğrafını çektiğin ürünleri senin için hızlıca kataloğa dönüştürebilirim. Başlamak için alt bardaki fotoğraf simgesine basıp bir fotoğraf yükle!",
       );
     }
 
     if (_containsAny(lower, ['fotoğraf', 'analiz', 'resim', 'çek'])) {
        return XRexChatMessage(
-        text: "Harika! Analiz için galeriden bir fotoğraf seçebilirsin veya yeni bir tane çekebilirsin.",
-        quickReplies: [const XRexQuickReply(label: "Fotoğraf Seç", payload: "PICK_IMAGE")],
+        text: "Harika! Analiz için alt bardaki fotoğraf butonuna basarak galeriden bir fotoğraf seçebilirsin veya yeni bir tane çekebilirsin.",
       );
     }
 
@@ -69,7 +66,6 @@ class XRexAsistanService {
     return XRexChatMessage(
       text: "Seni tam anlayamadım ama katalog oluşturmanda yardımcı olabilirim. Ne yapmak istersin?",
       quickReplies: [
-        const XRexQuickReply(label: "Fotoğraf Yükle", payload: "PICK_IMAGE"),
         const XRexQuickReply(label: "Ürün Listesini Gör", payload: "REVIEW_PRODUCTS"),
       ],
     );
@@ -78,9 +74,8 @@ class XRexAsistanService {
   XRexChatMessage handleAnalysisResult(int productCount) {
     if (productCount == 0) {
       return XRexChatMessage(
-        text: "Görseli inceledim ama net bir ürün veya fiyat çıkaramadım. İstersen metni elle girebilirsin veya başka bir fotoğraf deneyebiliriz.",
+        text: "Görseli inceledim ama net bir ürün veya fiyat çıkaramadım. İstersen metni elle girebilirsin veya alt bardaki fotoğraf butonuyla başka bir fotoğraf deneyebiliriz.",
         quickReplies: [
-          const XRexQuickReply(label: "Tekrar Dene", payload: "PICK_IMAGE"),
           const XRexQuickReply(label: "Metin Yapıştır", payload: "PASTE_TEXT"),
         ],
       );

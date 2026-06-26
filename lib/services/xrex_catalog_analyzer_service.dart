@@ -1,11 +1,19 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import '../models/xrex_detected_region.dart';
 import '../models/xrex_draft_product.dart';
 import '../models/xrex_ocr_line.dart';
+import '../models/xrex_ocr_result.dart';
 import 'xrex_object_detection_service.dart';
 import 'xrex_ocr_service.dart';
+import 'xrex_product_text_normalizer.dart';
+import 'xrex_tflite_object_detection_service.dart';
 import 'xrex_visual_catalog_parser.dart';
+import 'xrex_portfolio_service.dart';
+import 'xrex_price_parser.dart';
 
 class XRexCatalogAnalysisResult {
   final String rawText;
@@ -21,20 +29,37 @@ class XRexCatalogAnalysisResult {
 
 class XRexCatalogAnalyzerService {
   final XRexObjectDetectionService objectDetectionService;
+  final XRexTfliteObjectDetectionService tfliteObjectDetectionService;
   final XRexOcrService ocrService;
   final XRexVisualCatalogParser visualCatalogParser;
 
   const XRexCatalogAnalyzerService({
     this.objectDetectionService = const XRexObjectDetectionService(),
+    this.tfliteObjectDetectionService =
+        const XRexTfliteObjectDetectionService(),
     this.ocrService = const XRexOcrService(),
     this.visualCatalogParser = const XRexVisualCatalogParser(),
   });
 
-  Future<XRexCatalogAnalysisResult> analyzeImagePath(String imagePath) async {
-    final regions = await objectDetectionService.detectObjectsFromImagePath(
-      imagePath,
-    );
-    final ocrResult = await ocrService.readResultFromImagePath(imagePath);
+  Future<XRexCatalogAnalysisResult> analyzeImagePath(
+    String imagePath, {
+    Uint8List? imageBytes,
+  }) async {
+    final XRexOcrResult ocrResult;
+    final List<XRexDetectedRegion> regions;
+
+    if (kIsWeb) {
+      if (imageBytes != null && imageBytes.isNotEmpty) {
+        ocrResult = await ocrService.readResultFromImageBytes(imageBytes);
+      } else {
+        ocrResult = XRexOcrResult.empty;
+      }
+      regions = const [];
+    } else {
+      regions = await _detectRegions(imagePath, imageBytes: imageBytes);
+      ocrResult = await _readOcrSafely(imagePath);
+    }
+
     final products = _mergeRegionsAndText(regions, ocrResult.lines);
 
     return XRexCatalogAnalysisResult(
@@ -42,6 +67,35 @@ class XRexCatalogAnalyzerService {
       regions: regions,
       products: products,
     );
+  }
+
+  Future<List<XRexDetectedRegion>> _detectRegions(
+    String imagePath, {
+    Uint8List? imageBytes,
+  }) async {
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      try {
+        final tfliteRegions = await tfliteObjectDetectionService
+            .detectObjectsFromImageBytes(imageBytes);
+        if (tfliteRegions.isNotEmpty) return tfliteRegions;
+      } catch (_) {
+        // TFLite is optional. Keep the existing ML Kit path as fallback.
+      }
+    }
+
+    try {
+      return objectDetectionService.detectObjectsFromImagePath(imagePath);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<XRexOcrResult> _readOcrSafely(String imagePath) async {
+    try {
+      return ocrService.readResultFromImagePath(imagePath);
+    } catch (_) {
+      return XRexOcrResult.empty;
+    }
   }
 
   List<XRexDraftProduct> _mergeRegionsAndText(
@@ -56,20 +110,23 @@ class XRexCatalogAnalyzerService {
       final region = regions[i];
       final regionId = region.id;
 
-      final matchedOcr = ocrLines.where((line) {
-        final lineBox = line.boundingBox;
-        final overlap = _horizontalOverlap(region.boundingBox, lineBox);
-        if (overlap <= 0) return false;
+      final matchedOcr =
+          ocrLines.where((line) {
+            final lineBox = line.boundingBox;
+            final overlap = _horizontalOverlap(region.boundingBox, lineBox);
+            if (overlap <= 0) return false;
 
-        // In retail, product names/prices are inside or very close to the visual region
-        final isInside = lineBox.top >= region.boundingBox.top - 50 &&
-            lineBox.bottom <= region.boundingBox.bottom + 150;
+            // In retail, product names/prices are inside or very close to the visual region
+            final isInside =
+                lineBox.top >= region.boundingBox.top - 50 &&
+                lineBox.bottom <= region.boundingBox.bottom + 150;
 
-        final hDist = (line.centerX - region.centerX).abs();
-        final isHorizontallyAligned = hDist < region.boundingBox.width * 0.7;
+            final hDist = (line.centerX - region.centerX).abs();
+            final isHorizontallyAligned =
+                hDist < region.boundingBox.width * 0.7;
 
-        return isInside && isHorizontallyAligned;
-      }).toList();
+            return isInside && isHorizontallyAligned;
+          }).toList();
 
       for (final line in matchedOcr) {
         usedOcrKeys.add('${line.blockIndex}:${line.lineIndex}');
@@ -82,15 +139,20 @@ class XRexCatalogAnalyzerService {
 
       if (parsedList.isNotEmpty) {
         for (final parsed in parsedList) {
+          final cleanName = XRexProductTextNormalizer.normalizeProductName(
+            parsed.name,
+          );
           rawProducts.add(
             XRexDraftProduct(
-              id: '${DateTime.now().microsecondsSinceEpoch}_r_${i}_${rawProducts.length}',
-              name: parsed.name,
+              id:
+                  '${DateTime.now().microsecondsSinceEpoch}_r_${i}_${rawProducts.length}',
+              name: cleanName.isEmpty ? parsed.name : cleanName,
               price: parsed.price,
               oldPrice: parsed.oldPrice,
-              description: parsed.description.isNotEmpty
-                  ? parsed.description
-                  : 'Bölge #${i + 1} tespiti',
+              description:
+                  parsed.description.isNotEmpty
+                      ? parsed.description
+                      : 'Bölge #${i + 1} tespiti',
               category: parsed.category,
               stockStatus: 'Mevcut',
               sourceLineSummary: parsed.sourceLines.join('\n'),
@@ -108,7 +170,9 @@ class XRexCatalogAnalyzerService {
       } else {
         // No visual name/price parsed from coordinates. Infer name from lines or label
         final nonNoiseText = matchedOcr
-            .where((line) => line.text.trim().isNotEmpty && !_isNoiseLine(line.text))
+            .where(
+              (line) => line.text.trim().isNotEmpty && !_isNoiseLine(line.text),
+            )
             .map((line) => line.text.trim())
             .join(' ');
 
@@ -118,21 +182,26 @@ class XRexCatalogAnalyzerService {
         } else if (region.label != null && region.label!.isNotEmpty) {
           name = _translateLabel(region.label!);
         } else {
-          name = 'Görsel Ürün #${i + 1}';
+          name = 'G\u{00f6}rsel \u{00dc}r\u{00fc}n #${i + 1}';
+        }
+        final cleanName = XRexProductTextNormalizer.normalizeProductName(name);
+        if (cleanName.isNotEmpty) {
+          name = cleanName;
         }
 
         final sourceLines = matchedOcr.map((line) => line.text).toList();
         rawProducts.add(
           XRexDraftProduct(
-            id: '${DateTime.now().microsecondsSinceEpoch}_r_${i}_${rawProducts.length}',
+            id:
+                '${DateTime.now().microsecondsSinceEpoch}_r_${i}_${rawProducts.length}',
             name: name,
             price: '',
             oldPrice: '',
-            description: 'Fotoğraftan ${region.label ?? 'ürün'} tespiti',
+            description: 'Foto\u{011f}raftan ${region.label ?? '\u{00fc}r\u{00fc}n'} tespiti',
             category: _inferCategoryFromName(name),
             stockStatus: 'Mevcut',
             sourceLineSummary: sourceLines.join('\n'),
-            parserWarnings: const ['Fiyat güvenli okunamadı. İnceleme adayı.'],
+            parserWarnings: const ['Fiyat g\u{00fc}venli okunamad\u{0131}. \u{0130}nceleme aday\u{0131}.'],
             detectionId: regionId,
             detectionIds: [regionId],
             origin: 'object_detection',
@@ -146,21 +215,26 @@ class XRexCatalogAnalyzerService {
     }
 
     // 2. Process remaining unpaired OCR lines
-    final remainingOcr = ocrLines.where((line) {
-      return !usedOcrKeys.contains('${line.blockIndex}:${line.lineIndex}');
-    }).toList();
+    final remainingOcr =
+        ocrLines.where((line) {
+          return !usedOcrKeys.contains('${line.blockIndex}:${line.lineIndex}');
+        }).toList();
 
     if (remainingOcr.isNotEmpty) {
       final parsedList = visualCatalogParser.parse(
-        rawText: '',
+        rawText: remainingOcr.map((line) => line.text).join('\n'),
         lines: remainingOcr,
       );
       for (var j = 0; j < parsedList.length; j++) {
         final parsed = parsedList[j];
+        final cleanName = XRexProductTextNormalizer.normalizeProductName(
+          parsed.name,
+        );
         rawProducts.add(
           XRexDraftProduct(
-            id: '${DateTime.now().microsecondsSinceEpoch}_u_${j}_${rawProducts.length}',
-            name: parsed.name,
+            id:
+                '${DateTime.now().microsecondsSinceEpoch}_u_${j}_${rawProducts.length}',
+            name: cleanName.isEmpty ? parsed.name : cleanName,
             price: parsed.price,
             oldPrice: parsed.oldPrice,
             description: parsed.description,
@@ -178,13 +252,16 @@ class XRexCatalogAnalyzerService {
       }
     }
 
+    // 2.5. Match and enrich with product portfolio
+    _enrichProductsWithPortfolio(rawProducts);
+
     // 3. Deduplicate and merge products (Benzerleri Birleştir)
     final mergedProducts = <XRexDraftProduct>[];
     final seenNormalizedNames = <String, XRexDraftProduct>{};
 
     for (final prod in rawProducts) {
       final normName = _normalizeProductName(prod.name);
-      if (normName.isEmpty || normName == 'isimsiz ürün') {
+      if (normName.isEmpty || normName == 'isimsiz \u{00fc}r\u{00fc}n') {
         mergedProducts.add(prod);
         continue;
       }
@@ -219,13 +296,25 @@ class XRexCatalogAnalyzerService {
     return mergedProducts;
   }
 
-  String _inferCategoryFromName(String name) {
+  String inferCategory(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('çay') || lower.contains('bitki') || lower.contains('baharat')) return 'Aktar ürünleri';
-    if (lower.contains('elbise') || lower.contains('tişört') || lower.contains('pantolon')) return 'Giyim';
-    if (lower.contains('gözlük')) return 'Gözlük';
-    if (lower.contains('vida') || lower.contains('matkap')) return 'Hırdavat';
+    if (['koltuk', 'sandalye', 'masa', 'tabure', 'kanepe', 'puf', 'ofis', 'mobilya', 'dolap', 'komodin', 'sehpa', 'kitapl\u{0131}k', 'gard\u{0131}rop'].any(lower.contains)) return 'Mobilya';
+    if (['krem', 'parf\u{00fc}m', '\u{015f}ampuan', 'ruj', 'maskara', 'kozmetik', 'sabun', 'jel', 'all\u{0131}k', 'oje', 'fond\u{00f6}ten', 'serum', 'bak\u{0131}m', 'losyon'].any(lower.contains)) return 'Kozmetik';
+    if (['\u{00e7}ay', 'bitki', 'baharat', 'aktar', 'kekik', 'nane', '\u{0131}hlamur', 'papatya'].any(lower.contains)) return 'Aktar \u{00fc}r\u{00fc}nleri';
+    if (['elbise', 'ti\u{015f}\u{00f6}rt', 'pantolon', '\u{00e7}orap', 'ceket', 'kaban', 'kazak', 'h\u{0131}rka', '\u{015f}ort', 'bluz', 'pijama', 'giyim'].any(lower.contains)) return 'Giyim';
+    if (['g\u{00f6}zl\u{00fc}k', 'lens', '\u{00e7}er\u{00e7}eve', 'optik', 'g\u{00f6}zl\u{00fc}\u{011f}'].any(lower.contains)) return 'Gözlük';
+    if (['vida', 'matkap', '\u{00e7}eki\u{00e7}', 'pense', 'tornavida', 'h\u{0131}rdavat', 'anahtar', '\u{00e7}ivi'].any(lower.contains)) return 'H\u{0131}rdavat';
+    if (['defter', 'kalem', 'silgi', 'boya', 'cetvel', 'k\u{0131}rtasiye', 'kitap', 'ajanda', 'dosya'].any(lower.contains)) return 'K\u{0131}rtasiye';
+    if (['bebek', 'araba', 'lego', 'oyuncak', 'barbie', 'puzzle', 'pelu\u{015f}'].any(lower.contains)) return 'Oyuncak';
+    if (['elma', 'muz', 'domates', 'manav', 'sebze', 'meyve', 'limon', 'patates', 'so\u{011f}an', 'portakal', '\u{00e7}ilek'].any(lower.contains)) return 'Manav';
+    if (['yast\u{0131}k', 'yorgan', 'nevresim', 'havlu', '\u{00e7}ar\u{015f}af', 'battaniye', 'tekstil'].any(lower.contains)) return 'Ev tekstili';
+    if (['bardak', 'tabak', 'tencere', 'z\u{00fc}ccaciye', '\u{00e7}atal', 'ka\u{015f}\u{0131}k', 'kase', 'fincan', 'tava'].any(lower.contains)) return 'Z\u{00fc}ccaciye';
+    if (['k\u{00fc}pe', 'kolye', 'y\u{00fc}z\u{00fc}k', 'saat', '\u{00e7}anta', 'aksesuar', 'bileklik', 'toka', 'kemer'].any(lower.contains)) return 'Aksesuar';
     return 'Genel';
+  }
+
+  String _inferCategoryFromName(String name) {
+    return inferCategory(name);
   }
 
   double _horizontalOverlap(Rect a, Rect b) {
@@ -239,8 +328,21 @@ class XRexCatalogAnalyzerService {
     if (lower.isEmpty) return true;
 
     final noiseKeywords = [
-      'kargo', 'teslimat', 'kupon', 'puan', 'yorum', 'bedava', 'indirim',
-      'sepet', 'stok', 'kdv', 'tl', 'usd', 'eur', 'taksit', 'kargo bedava'
+      'kargo',
+      'teslimat',
+      'kupon',
+      'puan',
+      'yorum',
+      'bedava',
+      'indirim',
+      'sepet',
+      'stok',
+      'kdv',
+      'tl',
+      'usd',
+      'eur',
+      'taksit',
+      'kargo bedava',
     ];
     for (final kw in noiseKeywords) {
       if (lower.contains(kw)) return true;
@@ -253,12 +355,7 @@ class XRexCatalogAnalyzerService {
   }
 
   String _normalizeProductName(String name) {
-    return name
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[.,\-–—_+*]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return XRexProductTextNormalizer.dedupeKey(name);
   }
 
   String _translateLabel(String label) {
@@ -276,21 +373,102 @@ class XRexCatalogAnalyzerService {
     if (lower.contains('bin') ||
         lower.contains('can') ||
         lower.contains('trash')) {
-      return 'Pedallı Çöp Kovası';
+      return 'Pedall\u{0131} \u{00c7}\u{00f6}p Kovas\u{0131}';
     }
     if (lower.contains('box') || lower.contains('container')) {
       return 'Plastik Saklama Kutusu';
     }
     if (lower.contains('dryer') || lower.contains('rack')) {
-      return 'Çamaşır Kurutmalığı';
+      return '\u{00c7}ama\u{015f}\u{0131}r Kurutmal\u{0131}\u{011f}\u{0131}';
     }
     if (lower.contains('bucket') || lower.contains('pail')) {
       return 'Plastik Kova';
     }
     if (lower.contains('cart') || lower.contains('trolley')) {
-      return 'Market Arabası';
+      return 'Market Arabas\u{0131}';
     }
 
     return label[0].toUpperCase() + label.substring(1);
+  }
+
+  void _enrichProductsWithPortfolio(List<XRexDraftProduct> rawProducts) {
+    final portfolioService = XRexPortfolioService();
+    for (var i = 0; i < rawProducts.length; i++) {
+      final prod = rawProducts[i];
+      if (prod.name.isEmpty) continue;
+
+      // 1. Keep the original raw OCR text separately
+      prod.rawOcrText = prod.name;
+      prod.isApproved = false; // Requires user confirmation
+
+      // Get nearest 3 suggestions
+      final matches = portfolioService.findTopMatches(prod.name, limit: 3);
+      if (matches.isNotEmpty) {
+        final bestMatch = matches.first;
+        final bestProd = bestMatch.product;
+        final confidence = bestMatch.confidence;
+
+        prod.confidence = confidence;
+        prod.suggestions = matches.map((m) => m.product).toList();
+
+        if (confidence >= 0.85) {
+          // Rule 2 & 3: Strong Match (Score >= 85)
+          prod.name = bestProd.name;
+          prod.category = bestProd.category;
+          prod.description = bestProd.description;
+
+          // If price is missing or not parsed, default to portfolio price
+          if (prod.price.isEmpty && bestProd.price.isNotEmpty) {
+            prod.price = bestProd.price;
+            final parsedAmount = XRexPriceParser.parseAmount(bestProd.price);
+            if (parsedAmount != null) {
+              prod.priceAmount = parsedAmount.toDouble();
+            }
+          }
+
+          final matchPercentage = (confidence * 100).toStringAsFixed(0);
+          prod.parserWarnings = [
+            ...prod.parserWarnings,
+            'G\u{00fc}\u{00e7}l\u{00fc} e\u{015f}le\u{015f}me: ${bestProd.name} (%$matchPercentage)',
+          ];
+          prod.origin = 'portfolio_matched_strong';
+        } else if (confidence >= 0.60) {
+          // Rule 4: Weak/Ambiguous Match (Score 60-85)
+          prod.name = 'E\u{015f}le\u{015f}me kontrol\u{00fc} gerekli';
+          prod.category = bestProd.category;
+          prod.description = 'E\u{015f}le\u{015f}me kontrol\u{00fc} gerekli. En yak\u{0131}n e\u{015f}le\u{015f}en portf\u{00f6}y \u{00fc}r\u{00fc}n\u{00fc}n\u{00fc} listeden se\u{00e7}ebilirsiniz.';
+
+          final matchPercentage = (confidence * 100).toStringAsFixed(0);
+          prod.parserWarnings = [
+            ...prod.parserWarnings,
+            'Zay\u{0131}f e\u{015f}le\u{015f}me: En yak\u{0131}n aday ${bestProd.name} (%$matchPercentage)',
+          ];
+          prod.origin = 'portfolio_matched_weak';
+        } else {
+          // Rule 5: No Match (Score < 60)
+          prod.name = 'Bilinmeyen \u{00fc}r\u{00fc}n';
+          prod.category = 'Genel';
+          prod.description = 'Bu \u{00fc}r\u{00fc}n portf\u{00f6}yde bulunamad\u{0131} veya e\u{015f}le\u{015f}me skoru \u{00e7}ok d\u{00fc}\u{015f}\u{00fc}k. L\u{00fc}tfen elle d\u{00fc}zenleyin.';
+          prod.suggestions = const [];
+          prod.parserWarnings = [
+            ...prod.parserWarnings,
+            'E\u{015f}le\u{015f}me bulunamad\u{0131} (Skor %${(confidence * 100).toStringAsFixed(0)} < %60)',
+          ];
+          prod.origin = 'unmatched';
+        }
+      } else {
+        // No matches found at all
+        prod.name = 'Bilinmeyen \u{00fc}r\u{00fc}n';
+        prod.category = 'Genel';
+        prod.description = 'Bu \u{00fc}r\u{00fc}n portf\u{00f6}yde bulunamad\u{0131}. L\u{00fc}tfen elle d\u{00fc}zenleyin.';
+        prod.confidence = 0.0;
+        prod.suggestions = const [];
+        prod.parserWarnings = [
+          ...prod.parserWarnings,
+          'E\u{015f}le\u{015f}me bulunamad\u{0131}',
+        ];
+        prod.origin = 'unmatched';
+      }
+    }
   }
 }

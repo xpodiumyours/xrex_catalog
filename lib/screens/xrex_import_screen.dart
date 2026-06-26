@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -260,12 +262,12 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
 
   void _goReview() {
     final validProducts =
-        products.where((product) => !product.isBlank).toList();
+        products.where((product) => !product.isBlank && product.isApproved).toList();
     if (validProducts.isEmpty) {
       setState(() => hasTriedReview = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Önce en az bir ürün adı veya fiyat girin.'),
+          content: Text('Kataloğa eklenecek en az bir onaylanmış ürün olmalıdır.'),
         ),
       );
       return;
@@ -298,7 +300,7 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
             onPressed: _goReview,
             icon: const Icon(Icons.fact_check_outlined),
             label: Text(
-              'Son kontrol (${products.where((p) => !p.isBlank).length})',
+              'Son kontrol (${products.where((p) => !p.isBlank && p.isApproved).length})',
             ),
           ),
           const SizedBox(width: 8),
@@ -498,8 +500,10 @@ class _XRexImportScreenState extends State<XRexImportScreen> {
     return warnings;
   }
 
+  static final RegExp _priceFormatPattern = RegExp(r'\d{1,9}(?:[.,]\d{1,2})?');
+
   bool _hasParseablePrice(String price) {
-    return RegExp(r'\d{1,9}(?:[.,]\d{1,2})?').hasMatch(price);
+    return _priceFormatPattern.hasMatch(price);
   }
 
   @override

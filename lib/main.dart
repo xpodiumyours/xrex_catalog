@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/xrex_home_screen.dart';
+import 'screens/xrex_landing_screen.dart';
 
 void main() {
   runApp(const XRexCatalogApp());
@@ -13,7 +13,7 @@ class XRexCatalogApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'X-rex Catalog',
+      title: 'XREX',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -43,7 +43,7 @@ class XRexCatalogApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const XRexHomeScreen(),
+      home: const XRexLandingScreen(),
     );
   }
 }

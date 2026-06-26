@@ -1,3 +1,5 @@
+import 'xrex_portfolio_product.dart';
+
 class XRexDraftProduct {
   final String id;
   String name;
@@ -17,6 +19,10 @@ class XRexDraftProduct {
   int quantity;
   List<String> detectionIds;
 
+  String? rawOcrText;
+  bool isApproved;
+  List<XRexPortfolioProduct> suggestions;
+
   XRexDraftProduct({
     required this.id,
     this.name = '',
@@ -35,6 +41,9 @@ class XRexDraftProduct {
     this.sourceIndex,
     this.quantity = 1,
     this.detectionIds = const [],
+    this.rawOcrText,
+    this.isApproved = false,
+    this.suggestions = const [],
   });
 
   bool get isBlank => name.trim().isEmpty && price.trim().isEmpty;
@@ -57,6 +66,9 @@ class XRexDraftProduct {
     String? sourceIndex,
     int? quantity,
     List<String>? detectionIds,
+    String? rawOcrText,
+    bool? isApproved,
+    List<XRexPortfolioProduct>? suggestions,
   }) {
     return XRexDraftProduct(
       id: id ?? this.id,
@@ -76,6 +88,9 @@ class XRexDraftProduct {
       sourceIndex: sourceIndex ?? this.sourceIndex,
       quantity: quantity ?? this.quantity,
       detectionIds: detectionIds ?? this.detectionIds,
+      rawOcrText: rawOcrText ?? this.rawOcrText,
+      isApproved: isApproved ?? this.isApproved,
+      suggestions: suggestions ?? this.suggestions,
     );
   }
 
@@ -106,6 +121,8 @@ class XRexDraftProduct {
       },
       'review': {
         'warnings': parserWarnings,
+        'isApproved': isApproved,
+        'rawOcrText': rawOcrText,
       },
     };
   }

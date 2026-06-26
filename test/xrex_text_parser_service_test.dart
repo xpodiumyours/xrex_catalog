@@ -55,10 +55,12 @@ void main() {
     expect(products.first.price, '175 TL');
   });
 
-  test('does not create products without price', () {
+  test('creates products without price as fallback', () {
     final products = service.parseProducts('Sadece ürün adı var');
 
-    expect(products, isEmpty);
+    expect(products, hasLength(1));
+    expect(products.first.name, 'Sadece ürün adı var');
+    expect(products.first.price, '');
   });
 
   test('parses Turkish thousands with comma decimal format', () {
