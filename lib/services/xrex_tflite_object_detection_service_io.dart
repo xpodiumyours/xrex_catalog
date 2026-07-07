@@ -11,7 +11,7 @@ class XRexTfliteObjectDetectionService {
   static const String _modelAsset = 'assets/ml/efficientdet_lite0.tflite';
 
   const XRexTfliteObjectDetectionService({
-    this.scoreThreshold = 0.28,
+    this.scoreThreshold = 0.40,
     this.maxResults = 12,
   });
 
