@@ -17,9 +17,21 @@ class XRexImagePreprocessingService {
     final grayscaleImage = img.grayscale(image);
 
     // 2. Kontrastı Artır (Metinlerin arka plandan ayrışmasını sağlar)
+    // Basit parlaklık hesaplama: Ortalama gri değeri
+    int totalLuminance = 0;
+    int pixelCount = 0;
+    for (int y = 0; y < grayscaleImage.height; y += 10) { // Her 10 pikselde bir örnek
+      for (int x = 0; x < grayscaleImage.width; x += 10) {
+        final pixel = grayscaleImage.getPixel(x, y);
+        totalLuminance += pixel.r.toInt();
+        pixelCount++;
+      }
+    }
+    final brightness = pixelCount > 0 ? totalLuminance / pixelCount : 128;
+    final contrastValue = brightness < 100 ? 1.6 : 1.3; // Karanlık görsellerde daha az kontrast
     final highContrastImage = img.adjustColor(
       grayscaleImage,
-      contrast: 1.8, // %180 Kontrast oranı (eskisi: 1.5)
+      contrast: contrastValue,
     );
 
     // 3. Keskinlik (Sharpness) Ekle - OCR doğruluğunu artırır
@@ -32,16 +44,15 @@ class XRexImagePreprocessingService {
       ],
     );
 
-    // 4. Gaussian Blur ile pürüzleri yumuşat (hafif)
-    final blurredImage = img.gaussianBlur(sharpenedImage, radius: 1);
-
-    // 5. Fiyat etiketi renk filtresi (isteğe bağlı)
+    // 4. Fiyat etiketi renk filtresi (isteğe bağlı)
+    // Gaussian blur kaldırıldı - keskinlikten sonra uygulanması OCR kalitesini düşürüyor
     final processedImage = useColorFilter
-        ? filterPriceTagColors(blurredImage)
-        : blurredImage;
+        ? filterPriceTagColors(sharpenedImage)
+        : sharpenedImage;
 
     // Optimize edilmiş görseli geçici dosyaya kaydet
-    final optimizedBytes = Uint8List.fromList(img.encodeJpg(processedImage));
+    // JPEG kalitesini artır (95) - OCR doğruluğu için önemli
+    final optimizedBytes = Uint8List.fromList(img.encodeJpg(processedImage, quality: 95));
     final directory = inputImageFile.parent;
     final outputPath = '${directory.path}/optimized_ocr_${DateTime.now().millisecondsSinceEpoch}.jpg';
     

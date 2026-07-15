@@ -38,7 +38,7 @@ class XRexTextParserService {
     final textLines = normalized
         .split(_lineBreakPattern)
         .map((line) => line.trim())
-        .where((line) => line.length >= 3)
+        .where((line) => line.length >= 2) // Kısa etiketler için 2 karaktere düşürüldü
         .take(6);
 
     for (final line in textLines) {
@@ -287,10 +287,13 @@ class XRexTextParserService {
     if (_timePattern.hasMatch(normalized)) return true;
     if (_currencyJunkPattern.hasMatch(normalized)) return true;
 
-    if (normalized.contains('%')) return true;
+    // Yüzde işaretini sadece sayı ile başlayan durumlarda gürültü say
+    if (normalized.startsWith('%')) return true;
+
+    // Tam eşleşme ile gürültü kontrolü (kısmi eşleşme kaldırıldı)
     const noiseTerms = [
       'ana sayfa',
-      'ma\u{011f}azada ara',
+      'mağazada ara',
       'magazada ara',
       'favoriler',
       'favori',
@@ -304,13 +307,19 @@ class XRexTextParserService {
       'teslimat',
       'bedava',
       'taksit',
-      'h\u{0131}zl\u{0131} teslimat',
+      'hızlı teslimat',
       'hizli teslimat',
-      'video \u{00fc}r\u{00fc}n',
-      'flash \u{00fc}r\u{00fc}n',
-      'fla\u{015f} \u{00fc}r\u{00fc}n',
+      'video ürün',
+      'flash ürün',
+      'flaş ürün',
+      'sepette',
+      'stokta',
+      'tükendi',
+      'sepete ekle',
+      'hemen al',
+      'satın al',
     ];
-    if (noiseTerms.any(normalized.contains)) return true;
+    if (noiseTerms.contains(normalized)) return true;
     return false;
   }
 }

@@ -52,7 +52,7 @@ class XRexPriceParser {
     if (numeric == null) return false;
     if (hasCurrency) return true;
 
-    return numeric >= 4;
+    return numeric >= 1; // 4 TL'den 1 TL'ye düşürüldü - küçük ürünler için
   }
 
   static num? parseAmount(String rawPrice) {
