@@ -7,38 +7,61 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../models/xrex_detected_region.dart';
 
+/// XRex TFLite Nesne Algılama Servisi (Geliştirilmiş)
+/// - INT8 kuantizasyon desteği
+/// - Dinamik çözünürlük ayarı
+/// - Gelişmiş ön işleme entegrasyonu
 class XRexTfliteObjectDetectionService {
-  static const String _modelAsset = 'assets/ml/efficientdet_lite0.tflite';
+  static const String _modelAssetFloat = 'assets/ml/efficientdet_lite0.tflite';
+  static const String _modelAssetInt8 = 'assets/ml/efficientdet_lite0_int8.tflite';
 
   const XRexTfliteObjectDetectionService({
     this.scoreThreshold = 0.40,
     this.maxResults = 12,
+    this.useQuantizedModel = true,
+    this.dynamicResolution = true,
   });
 
   final double scoreThreshold;
   final int maxResults;
+  final bool useQuantizedModel;
+  final bool dynamicResolution;
 
+  /// Görsel bytes'ından nesne algılama işlemi yapar
   Future<List<XRexDetectedRegion>> detectObjectsFromImageBytes(
     Uint8List imageBytes,
   ) async {
     final decoded = img.decodeImage(imageBytes);
     if (decoded == null) return const [];
 
-    final interpreter = await Interpreter.fromAsset(_modelAsset);
+    // Dinamik çözünürlük ayarı
+    final targetSize = _calculateOptimalInputSize(decoded);
+    final resized = img.copyResize(
+      decoded,
+      width: targetSize.width,
+      height: targetSize.height,
+    );
+
+    // Model seçimi (INT8 veya Float32)
+    final modelAsset = useQuantizedModel ? _modelAssetInt8 : _modelAssetFloat;
+    
+    Interpreter? interpreter;
     try {
+      interpreter = await Interpreter.fromAsset(modelAsset);
+      
       final inputTensor = interpreter.getInputTensor(0);
       final inputShape = inputTensor.shape;
       if (inputShape.length != 4) return const [];
 
       final inputHeight = inputShape[1];
       final inputWidth = inputShape[2];
-      final resized = img.copyResize(
-        decoded,
-        width: inputWidth,
-        height: inputHeight,
-      );
+      
+      // Hızlı yeniden boyutlandırma (zaten yapıldı ama kontrol)
+      final finalResized = resized.width != inputWidth || resized.height != inputHeight
+          ? img.copyResize(resized, width: inputWidth, height: inputHeight)
+          : resized;
 
-      final input = _buildInput(resized, inputTensor);
+      final input = _buildInput(finalResized, inputTensor);
       final outputTensors = interpreter.getOutputTensors();
       final outputs = <int, Object>{};
 
@@ -56,9 +79,87 @@ class XRexTfliteObjectDetectionService {
       );
 
       return _dedupeRegions(parsed).take(maxResults).toList(growable: false);
+    } catch (e) {
+      // INT8 modeli bulunamazsa float modele geç
+      if (useQuantizedModel && e.toString().contains('asset')) {
+        return XRexTfliteObjectDetectionService(
+          scoreThreshold: scoreThreshold,
+          maxResults: maxResults,
+          useQuantizedModel: false,
+          dynamicResolution: dynamicResolution,
+        ).detectObjectsFromImageBytes(imageBytes);
+      }
+      rethrow;
     } finally {
-      interpreter.close();
+      interpreter?.close();
     }
+  }
+
+  /// Görselin karmaşıklığına göre optimal giriş boyutunu hesaplar
+  Size _calculateOptimalInputSize(img.Image image) {
+    if (!dynamicResolution) {
+      return const Size(320, 320); // Varsayılan boyut
+    }
+
+    // Basit karmaşıklık metrikleri
+    final avgBrightness = _calculateAverageBrightness(image);
+    final edgeDensity = _calculateEdgeDensity(image);
+    
+    // Düşük ışık veya yüksek kenar yoğunluğu -> Daha yüksek çözünürlük
+    if (avgBrightness < 80 || edgeDensity > 0.3) {
+      return const Size(512, 512);
+    } else if (avgBrightness < 120 || edgeDensity > 0.2) {
+      return const Size(384, 384);
+    }
+    
+    return const Size(320, 320);
+  }
+
+  /// Ortalama parlaklık hesaplama
+  double _calculateAverageBrightness(img.Image image) {
+    int totalLuminance = 0;
+    int pixelCount = 0;
+    final step = math.max(1, (image.width ~/ 50)); // Performans için örnekleme
+    
+    for (int y = 0; y < image.height; y += step) {
+      for (int x = 0; x < image.width; x += step) {
+        final pixel = image.getPixel(x, y);
+        // İnsan gözü yeşile daha duyarlı
+        totalLuminance += (pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114).round();
+        pixelCount++;
+      }
+    }
+    
+    return pixelCount > 0 ? totalLuminance / pixelCount : 128;
+  }
+
+  /// Kenar yoğunluğu hesaplama (basit Sobel operatörü)
+  double _calculateEdgeDensity(img.Image image) {
+    final grayscale = img.grayscale(image);
+    int edgePixels = 0;
+    int totalPixels = 0;
+    final step = math.max(1, (image.width ~/ 30));
+    
+    for (int y = 1; y < image.height - 1; y += step) {
+      for (int x = 1; x < image.width - 1; x += step) {
+        final center = grayscale.getPixel(x, y).r.toInt();
+        final left = grayscale.getPixel(x - 1, y).r.toInt();
+        final right = grayscale.getPixel(x + 1, y).r.toInt();
+        final top = grayscale.getPixel(x, y - 1).r.toInt();
+        final bottom = grayscale.getPixel(x, y + 1).r.toInt();
+        
+        final gradientX = (right - left).abs();
+        final gradientY = (bottom - top).abs();
+        final gradient = gradientX + gradientY;
+        
+        if (gradient > 50) { // Eşik değeri
+          edgePixels++;
+        }
+        totalPixels++;
+      }
+    }
+    
+    return totalPixels > 0 ? edgePixels / totalPixels : 0.0;
   }
 
   Object _buildInput(img.Image resized, Tensor inputTensor) {

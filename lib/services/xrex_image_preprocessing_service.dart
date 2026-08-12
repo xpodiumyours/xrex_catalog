@@ -1,42 +1,66 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
+/// Işıklandırma analizi sonucu veri sınıfı
+class _LightingAnalysis {
+  final double averageBrightness;
+  final int dynamicRange;
+  final bool isLowLight;
+  final double blurScore;
+
+  const _LightingAnalysis({
+    required this.averageBrightness,
+    required this.dynamicRange,
+    required this.isLowLight,
+    required this.blurScore,
+  });
+}
+
+/// XRex Görüntü Ön İşleme Servisi (Geliştirilmiş)
+/// - Çok aşamalı tarama desteği
+/// - Gelişmiş ışıklandırma düzeltme
+/// - Renk tabanlı etiket filtreleme
+/// - Blur giderme filtreleri
 class XRexImagePreprocessingService {
   const XRexImagePreprocessingService();
 
   /// Kameradan gelen ham fatura veya reyon görselini OCR için optimize eder.
   /// [useColorFilter] = true olduğunda fiyat etiketleri için renk filtresi uygulanır.
-  Future<File> preprocessImageForOcr(File inputImageFile, {bool useColorFilter = false}) async {
+  /// [aggressiveMode] = true olduğunda düşük ışık koşulları için daha agresif iyileştirme yapılır.
+  Future<File> preprocessImageForOcr(
+    File inputImageFile, {
+    bool useColorFilter = false,
+    bool aggressiveMode = false,
+  }) async {
     final bytes = await inputImageFile.readAsBytes();
     final image = img.decodeImage(bytes);
 
     if (image == null) return inputImageFile;
 
     // 1. Görseli Gri Tonlamaya Çevir (Gürültüyü azaltır)
-    final grayscaleImage = img.grayscale(image);
+    img.Image processedImage = img.grayscale(image);
 
-    // 2. Kontrastı Artır (Metinlerin arka plandan ayrışmasını sağlar)
-    // Basit parlaklık hesaplama: Ortalama gri değeri
-    int totalLuminance = 0;
-    int pixelCount = 0;
-    for (int y = 0; y < grayscaleImage.height; y += 10) { // Her 10 pikselde bir örnek
-      for (int x = 0; x < grayscaleImage.width; x += 10) {
-        final pixel = grayscaleImage.getPixel(x, y);
-        totalLuminance += pixel.r.toInt();
-        pixelCount++;
-      }
+    // 2. Işıklandırma analizi ve adaptif düzeltme
+    final lightingAnalysis = _analyzeLighting(processedImage);
+    
+    if (lightingAnalysis.isLowLight || aggressiveMode) {
+      // Düşük ışık koşulları: Gamma düzeltmesi + histogram eşitleme
+      processedImage = _applyLowLightCorrection(processedImage, lightingAnalysis);
+    } else {
+      // Normal koşullar: Basit kontrast artırma
+      final brightness = lightingAnalysis.averageBrightness;
+      final contrastValue = brightness < 100 ? 1.6 : 1.3;
+      processedImage = img.adjustColor(
+        processedImage,
+        contrast: contrastValue,
+      );
     }
-    final brightness = pixelCount > 0 ? totalLuminance / pixelCount : 128;
-    final contrastValue = brightness < 100 ? 1.6 : 1.3; // Karanlık görsellerde daha az kontrast
-    final highContrastImage = img.adjustColor(
-      grayscaleImage,
-      contrast: contrastValue,
-    );
 
     // 3. Keskinlik (Sharpness) Ekle - OCR doğruluğunu artırır
-    final sharpenedImage = img.convolution(
-      highContrastImage,
+    processedImage = img.convolution(
+      processedImage,
       filter: [
          0, -1,  0,
         -1,  5, -1,
@@ -44,11 +68,15 @@ class XRexImagePreprocessingService {
       ],
     );
 
-    // 4. Fiyat etiketi renk filtresi (isteğe bağlı)
-    // Gaussian blur kaldırıldı - keskinlikten sonra uygulanması OCR kalitesini düşürüyor
-    final processedImage = useColorFilter
-        ? filterPriceTagColors(sharpenedImage)
-        : sharpenedImage;
+    // 4. Blur giderme (isteğe bağlı, agresif modda)
+    if (aggressiveMode && lightingAnalysis.blurScore > 0.4) {
+      processedImage = _applyDeblurFilter(processedImage);
+    }
+
+    // 5. Fiyat etiketi renk filtresi (isteğe bağlı)
+    if (useColorFilter) {
+      processedImage = filterPriceTagColors(processedImage);
+    }
 
     // Optimize edilmiş görseli geçici dosyaya kaydet
     // JPEG kalitesini artır (95) - OCR doğruluğu için önemli
@@ -57,6 +85,98 @@ class XRexImagePreprocessingService {
     final outputPath = '${directory.path}/optimized_ocr_${DateTime.now().millisecondsSinceEpoch}.jpg';
     
     return File(outputPath).writeAsBytes(optimizedBytes);
+  }
+
+  /// Işıklandırma analizi sonucu
+  _LightingAnalysis _analyzeLighting(img.Image image) {
+    int totalLuminance = 0;
+    int minLuminance = 255;
+    int maxLuminance = 0;
+    int pixelCount = 0;
+    final step = math.max(1, (image.width ~/ 40));
+
+    // Basit Laplacian varyansı ile blur tespiti
+    double variance = 0;
+    final grayscale = img.grayscale(image);
+    
+    for (int y = 1; y < image.height - 1; y += step) {
+      for (int x = 1; x < image.width - 1; x += step) {
+        final center = grayscale.getPixel(x, y).r.toInt();
+        final left = grayscale.getPixel(x - 1, y).r.toInt();
+        final right = grayscale.getPixel(x + 1, y).r.toInt();
+        final top = grayscale.getPixel(x, y - 1).r.toInt();
+        final bottom = grayscale.getPixel(x, y + 1).r.toInt();
+        
+        // Laplacian operatörü
+        final laplacian = (4 * center - left - right - top - bottom).abs();
+        variance += laplacian * laplacian;
+        
+        final luminance = (center * 0.299 + center * 0.587 + center * 0.114).round();
+        totalLuminance += luminance;
+        if (luminance < minLuminance) minLuminance = luminance;
+        if (luminance > maxLuminance) maxLuminance = luminance;
+        pixelCount++;
+      }
+    }
+
+    final avgBrightness = pixelCount > 0 ? totalLuminance / pixelCount : 128;
+    final dynamicRange = maxLuminance - minLuminance;
+    final blurScore = pixelCount > 0 ? (variance / pixelCount) / 10000 : 0.0;
+
+    return _LightingAnalysis(
+      averageBrightness: avgBrightness,
+      dynamicRange: dynamicRange,
+      isLowLight: avgBrightness < 90,
+      blurScore: blurScore.clamp(0.0, 1.0),
+    );
+  }
+
+  /// Düşük ışık düzeltmesi uygular
+  img.Image _applyLowLightCorrection(img.Image image, _LightingAnalysis analysis) {
+    // Gamma düzeltmesi (düşük ışıkta daha güçlü)
+    final gamma = analysis.averageBrightness < 60 ? 1.8 : 1.4;
+    
+    // Histogram eşitleme için basit yaklaşım
+    final result = img.Image(width: image.width, height: image.height);
+    
+    for (int y = 0; y < image.height; y++) {
+      for (int x = 0; x < image.width; x++) {
+        final pixel = image.getPixel(x, y);
+        final gray = pixel.r.toDouble();
+        
+        // Gamma düzeltmesi
+        final corrected = 255.0 * math.pow(gray / 255.0, 1.0 / gamma);
+        final clamped = corrected.clamp(0.0, 255.0).toInt();
+        
+        result.setPixel(x, y, img.ColorRgb8(clamped, clamped, clamped));
+      }
+    }
+    
+    // Kontrastı hafifçe artır
+    return img.adjustColor(result, contrast: 1.4);
+  }
+
+  /// Blur giderme filtresi (basit Wiener benzeri yaklaşım)
+  img.Image _applyDeblurFilter(img.Image image) {
+    // Unsharp mask tekniği
+    final blurred = img.gaussianBlur(image, radius: 1);
+    final result = img.Image(width: image.width, height: image.height);
+    
+    for (int y = 0; y < image.height; y++) {
+      for (int x = 0; x < image.width; x++) {
+        final orig = image.getPixel(x, y);
+        final blur = blurred.getPixel(x, y);
+        
+        // Unsharp masking: original + amount * (original - blurred)
+        final r = (orig.r + 1.5 * (orig.r - blur.r)).clamp(0, 255).toInt();
+        final g = (orig.g + 1.5 * (orig.g - blur.g)).clamp(0, 255).toInt();
+        final b = (orig.b + 1.5 * (orig.b - blur.b)).clamp(0, 255).toInt();
+        
+        result.setPixel(x, y, img.ColorRgb8(r, g, b));
+      }
+    }
+    
+    return result;
   }
 
   /// Fiyat etiketlerini algılamak için renk filtresi uygular.

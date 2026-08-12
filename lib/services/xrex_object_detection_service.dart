@@ -1,39 +1,48 @@
 import 'package:flutter/foundation.dart';
-import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
+import 'dart:typed_data';
+import 'xrex_tflite_object_detection_service_io.dart'
+    if (dart.library.html) 'xrex_tflite_object_detection_service_web.dart';
 
-import '../models/xrex_detected_region.dart';
+/// Platform Bağımsız TFLite Nesne Algılama Servisi
+/// Otomatik olarak IO (Mobil/Desktop) veya Web implementasyonunu seçer.
+class XrexTFLiteObjectDetectionService {
+  static final XrexTFLiteObjectDetectionService _instance =
+      XrexTFLiteObjectDetectionService._internal();
+  
+  factory XrexTFLiteObjectDetectionService() => _instance;
+  XrexTFLiteObjectDetectionService._internal();
 
-class XRexObjectDetectionService {
-  const XRexObjectDetectionService();
+  // Platforma göre doğru servisi seç
+  final _service = kIsWeb
+      ? XrexObjectDetectionServiceWeb()
+      : XrexObjectDetectionServiceIO();
 
-  Future<List<XRexDetectedRegion>> detectObjectsFromImagePath(
-    String imagePath,
-  ) async {
-    if (kIsWeb || imagePath.trim().isEmpty) return const [];
-
-    final inputImage = InputImage.fromFilePath(imagePath);
-    final detector = ObjectDetector(
-      options: ObjectDetectorOptions(
-        mode: DetectionMode.single,
-        classifyObjects: true,
-        multipleObjects: true,
-      ),
+  /// Modeli yükle
+  Future<bool> loadModel({
+    required String modelPath,
+    int numThreads = 4,
+  }) async {
+    return await _service.loadModel(
+      modelPath: modelPath,
+      numThreads: numThreads,
     );
+  }
 
-    try {
-      final objects = await detector.processImage(inputImage);
-      return List.generate(objects.length, (index) {
-        final object = objects[index];
-        final label = object.labels.isEmpty ? null : object.labels.first;
-        return XRexDetectedRegion(
-          id: 'region_${index + 1}',
-          boundingBox: object.boundingBox,
-          label: label?.text,
-          confidence: label?.confidence,
-        );
-      });
-    } finally {
-      await detector.close();
-    }
+  /// Nesne tespiti yap
+  Future<List<Map<String, dynamic>>?> detectObjects({
+    required Uint8List imageBytes,
+    required int width,
+    required int height,
+  }) async {
+    return await _service.detectObjects(
+      imageBytes: imageBytes,
+      width: width,
+      height: height,
+    );
+  }
+
+  /// Kaynakları temizle
+  void dispose() {
+    _service.dispose();
   }
 }
