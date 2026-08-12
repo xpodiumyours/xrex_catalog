@@ -16,6 +16,10 @@ dependencies:
   image: ^4.9.1
   tflite_flutter: ^0.12.1
   http: ^1.2.2
+  # Web desteği için paketler
+  tflite_web: ^0.1.0
+  tflite_web_api: ^0.1.0
+  universal_html: ^2.2.0
 
 dev_dependencies:
   flutter_test:
