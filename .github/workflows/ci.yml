@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze_and_test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze (flutter analyze)
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests with coverage
+        run: flutter test --coverage --no-pub
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
+  build_android:
+    name: Build Android (Debug APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: analyze_and_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK (debug)
+        run: flutter build apk --debug --no-tree-shake-icons
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+  build_web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: analyze_and_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release --no-tree-shake-icons
+
+      - name: Upload Web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+          retention-days: 7
+
+  check_coverage:
+    name: Check Coverage Threshold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: analyze_and_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+      - name: Check coverage threshold (70%)
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo 0)
+            COVERED_LINES=$(awk -F, '/^DA:/ {if ($3 > 0) count++} END {print count+0}' coverage/lcov.info)
+            if [ "$TOTAL_LINES" -gt 0 ]; then
+              PERCENT=$(( COVERED_LINES * 100 / TOTAL_LINES ))
+              echo "Coverage: ${PERCENT}% (${COVERED_LINES}/${TOTAL_LINES})"
+              if [ "$PERCENT" -lt 70 ]; then
+                echo "::error::Coverage ${PERCENT}% is below 70% threshold"
+                exit 1
+              fi
+            else
+              echo "No executable lines found"
+              exit 1
+            fi
+          else
+            echo "::error::Coverage file not found"
+            exit 1
+          fi
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
