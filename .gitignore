@@ -1,20 +1,58 @@
-```
-# Dependencies
-.dart_tool/
-.build/
-packages/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Logs
-*.log
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Environment
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
 .env
-.env.local
-*.env.*
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
@@ -22,37 +60,20 @@ packages/
 .DS_Store
 Thumbs.db
 
-# Build outputs
-build/
-dist/
-target/
+# Model weights (large files)
+*.pt
+*.onnx
+*.ncnn
+*.tflite
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
+# Logs
+*.log
+logs/
 
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
-```
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# IDE specific
+*.pyc
