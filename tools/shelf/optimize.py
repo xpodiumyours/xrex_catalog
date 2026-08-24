@@ -188,7 +188,7 @@ class ModelOptimizer:
 
 
 class BatchOCRProcessor:
-    """Batch OCR processor for multiple crops."""
+    """Batch OCR processor for multiple crops (PaddleOCR 3.x compatible)."""
     
     def __init__(self, ocr, batch_size: int = 10):
         self.ocr = ocr
@@ -222,13 +222,13 @@ class BatchOCRProcessor:
             if not batch_images:
                 continue
             
-            # Batch OCR
-            ocr_results = self.ocr.ocr(batch_images)
+            # Batch OCR - PaddleOCR 3.x uses .predict()
+            ocr_results = self.ocr.ocr.predict(batch_images)
             
             for (crop_info, ox, oy), ocr_result in zip(batch_infos, ocr_results):
                 texts = []
                 if ocr_result and len(ocr_result) > 0:
-                    for item in ocr_result[0]:
+                    for item in ocr_result:
                         if isinstance(item, dict):
                             texts_list = item.get('rec_texts', [])
                             scores_list = item.get('rec_scores', [])

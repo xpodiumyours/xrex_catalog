@@ -13,7 +13,7 @@ void main() {
       sessionId: 'test-session',
       businessType: 'Butik',
       selectedImageBytes: Uint8List.fromList([1, 2, 3]),
-      products: products,
+      products: products.map((p) => p.copyWith(isApproved: true)).toList(),
     );
   }
 

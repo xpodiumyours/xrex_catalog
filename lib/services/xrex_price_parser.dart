@@ -50,9 +50,17 @@ class XRexPriceParser {
 
     final numeric = parseAmount(value);
     if (numeric == null) return false;
-    if (hasCurrency) return true;
+    
+    // Standalone numbers without currency are not prices (e.g., page numbers, quantities)
+    if (!hasCurrency) {
+      // Reject if the full line is just digits (possibly with spaces)
+      final digitsOnly = RegExp(r'^[\d\s]+$').hasMatch(normalizedLine);
+      if (digitsOnly) return false;
+      // Require minimum amount for prices without currency
+      return numeric >= 4;
+    }
 
-    return numeric >= 1; // 4 TL'den 1 TL'ye düşürüldü - küçük ürünler için
+    return true;
   }
 
   static num? parseAmount(String rawPrice) {

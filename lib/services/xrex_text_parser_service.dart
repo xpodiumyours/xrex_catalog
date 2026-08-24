@@ -281,6 +281,10 @@ class XRexTextParserService {
   bool _isNoiseLine(String line) {
     final normalized = _normalizeWhitespace(line).toLowerCase();
     if (normalized.length < 2) return true;
+    
+    // Explicit check for standalone currency codes
+    if (normalized == 'tl' || normalized == 'try' || normalized == '₺') return true;
+
     if (_onlySymbolsPattern.hasMatch(normalized)) return true;
     if (_onlyDigitsPattern.hasMatch(normalized)) return true;
     if (_slashDigitsPattern.hasMatch(normalized)) return true;
@@ -318,6 +322,8 @@ class XRexTextParserService {
       'sepete ekle',
       'hemen al',
       'satın al',
+      'tl',
+      'try',
     ];
     if (noiseTerms.contains(normalized)) return true;
     return false;

@@ -75,6 +75,7 @@ void main() {
           name: 'Pamuklu Tişört',
           price: '350 TL', // Valid price amount!
           category: 'Giyim',
+          isApproved: true,
         ),
       ],
     );
