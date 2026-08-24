@@ -1,22 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
-import 'xrex_tflite_object_detection_service_io.dart'
-    if (dart.library.html) 'xrex_tflite_object_detection_service_web.dart';
+
+import 'xrex_tflite_object_detection_service_io.dart';
+import 'xrex_tflite_object_detection_service_web.dart';
+import 'xrex_tflite_object_detection_service_platform.dart';
 
 /// Platform Bağımsız TFLite Nesne Algılama Servisi
-/// Otomatik olarak IO (Mobil/Desktop) veya Web implementasyonunu seçer.
-class XrexTFLiteObjectDetectionService {
+/// Otomatik olarak uygun platform implementasyonunu kullanır (IO, Web, Stub)
+class XrexTFLiteObjectDetectionService implements XRexTfliteObjectDetectionServicePlatform {
   static final XrexTFLiteObjectDetectionService _instance =
       XrexTFLiteObjectDetectionService._internal();
-  
+
   factory XrexTFLiteObjectDetectionService() => _instance;
   XrexTFLiteObjectDetectionService._internal();
 
   // Platforma göre doğru servisi seç
-  final _service = kIsWeb
-      ? XrexObjectDetectionServiceWeb()
-      : XrexObjectDetectionServiceIO();
+  final XRexTfliteObjectDetectionServicePlatform _service = kIsWeb
+      ? XRexTfliteObjectDetectionServiceWeb()
+      : XRexTfliteObjectDetectionServiceIO();
 
+  @override
   /// Modeli yükle
   Future<bool> loadModel({
     required String modelPath,
@@ -28,6 +31,7 @@ class XrexTFLiteObjectDetectionService {
     );
   }
 
+  @override
   /// Nesne tespiti yap
   Future<List<Map<String, dynamic>>?> detectObjects({
     required Uint8List imageBytes,
@@ -41,6 +45,7 @@ class XrexTFLiteObjectDetectionService {
     );
   }
 
+  @override
   /// Kaynakları temizle
   void dispose() {
     _service.dispose();

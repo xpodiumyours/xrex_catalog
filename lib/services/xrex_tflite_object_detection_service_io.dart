@@ -6,16 +6,17 @@ import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../models/xrex_detected_region.dart';
+import 'xrex_tflite_object_detection_service_platform.dart';
 
-/// XRex TFLite Nesne Algılama Servisi (Geliştirilmiş)
+/// XRex TFLite Nesne Algılama Servisi (Geliştirilmiş) - IO Platformu
 /// - INT8 kuantizasyon desteği
 /// - Dinamik çözünürlük ayarı
 /// - Gelişmiş ön işleme entegrasyonu
-class XRexTfliteObjectDetectionService {
+class XRexTfliteObjectDetectionServiceIO implements XRexTfliteObjectDetectionServicePlatform {
   static const String _modelAssetFloat = 'assets/ml/efficientdet_lite0.tflite';
   static const String _modelAssetInt8 = 'assets/ml/efficientdet_lite0_int8.tflite';
 
-  const XRexTfliteObjectDetectionService({
+  const XRexTfliteObjectDetectionServiceIO({
     this.scoreThreshold = 0.40,
     this.maxResults = 12,
     this.useQuantizedModel = true,
@@ -26,6 +27,30 @@ class XRexTfliteObjectDetectionService {
   final int maxResults;
   final bool useQuantizedModel;
   final bool dynamicResolution;
+
+  @override
+  Future<bool> loadModel({
+    required String modelPath,
+    int numThreads = 4,
+  }) async {
+    // IO platformunda model loadModel çağrısıyla değil, detectObjectsFromImageBytes içinde yüklenir
+    return true;
+  }
+
+  @override
+  /// Nesne tespiti yap (IO platformu için wrapper)
+  Future<List<Map<String, dynamic>>?> detectObjects({
+    required Uint8List imageBytes,
+    required int width,
+    required int height,
+  }) async {
+    final regions = await detectObjectsFromImageBytes(imageBytes);
+    return regions.map((r) => {
+      'box': [r.boundingBox.left, r.boundingBox.top, r.boundingBox.right, r.boundingBox.bottom],
+      'class': r.label,
+      'score': r.confidence,
+    }).toList();
+  }
 
   /// Görsel bytes'ından nesne algılama işlemi yapar
   Future<List<XRexDetectedRegion>> detectObjectsFromImageBytes(
@@ -38,8 +63,8 @@ class XRexTfliteObjectDetectionService {
     final targetSize = _calculateOptimalInputSize(decoded);
     final resized = img.copyResize(
       decoded,
-      width: targetSize.width,
-      height: targetSize.height,
+      width: targetSize.width.round(),
+      height: targetSize.height.round(),
     );
 
     // Model seçimi (INT8 veya Float32)
@@ -53,8 +78,8 @@ class XRexTfliteObjectDetectionService {
       final inputShape = inputTensor.shape;
       if (inputShape.length != 4) return const [];
 
-      final inputHeight = inputShape[1];
-      final inputWidth = inputShape[2];
+      final inputHeight = (inputShape[1] as int?) ?? 320;
+      final inputWidth = (inputShape[2] as int?) ?? 320;
       
       // Hızlı yeniden boyutlandırma (zaten yapıldı ama kontrol)
       final finalResized = resized.width != inputWidth || resized.height != inputHeight
@@ -82,7 +107,7 @@ class XRexTfliteObjectDetectionService {
     } catch (e) {
       // INT8 modeli bulunamazsa float modele geç
       if (useQuantizedModel && e.toString().contains('asset')) {
-        return XRexTfliteObjectDetectionService(
+        return XRexTfliteObjectDetectionServiceIO(
           scoreThreshold: scoreThreshold,
           maxResults: maxResults,
           useQuantizedModel: false,
@@ -332,5 +357,10 @@ class XRexTfliteObjectDetectionService {
     final union = a.width * a.height + b.width * b.height - intersection;
     if (union <= 0) return 0;
     return intersection / union;
+  }
+
+  @override
+  void dispose() {
+    // IO platform doesn't hold persistent resources
   }
 }

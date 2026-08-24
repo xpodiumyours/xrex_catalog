@@ -119,9 +119,9 @@ class XRexImagePreprocessingService {
       }
     }
 
-    final avgBrightness = pixelCount > 0 ? totalLuminance / pixelCount : 128;
+    final avgBrightness = pixelCount > 0 ? (totalLuminance / pixelCount) : 128.0;
     final dynamicRange = maxLuminance - minLuminance;
-    final blurScore = pixelCount > 0 ? (variance / pixelCount) / 10000 : 0.0;
+    final blurScore = pixelCount > 0 ? (variance / pixelCount) / 10000.0 : 0.0;
 
     return _LightingAnalysis(
       averageBrightness: avgBrightness,

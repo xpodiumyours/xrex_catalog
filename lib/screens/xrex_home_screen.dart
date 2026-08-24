@@ -26,8 +26,7 @@ class XRexHomeScreen extends StatefulWidget {
 class _XRexHomeScreenState extends State<XRexHomeScreen> {
   // Services
   final XRexAsistanService asistanService = const XRexAsistanService();
-  final XRexCatalogAnalyzerService analyzerService =
-      const XRexCatalogAnalyzerService();
+  final XRexCatalogAnalyzerService analyzerService = XRexCatalogAnalyzerService();
   final XRexCatalogService catalogService = const XRexCatalogService();
   final XRexSupabaseService supabaseService = XRexSupabaseService();
 

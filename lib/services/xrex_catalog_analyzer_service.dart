@@ -7,10 +7,10 @@ import '../models/xrex_detected_region.dart';
 import '../models/xrex_draft_product.dart';
 import '../models/xrex_ocr_line.dart';
 import '../models/xrex_ocr_result.dart';
-import 'xrex_object_detection_service.dart';
 import 'xrex_ocr_service.dart';
 import 'xrex_product_text_normalizer.dart';
-import 'xrex_tflite_object_detection_service.dart';
+import 'xrex_object_detection_service.dart';
+import 'xrex_tflite_object_detection_service_platform.dart';
 import 'xrex_visual_catalog_parser.dart';
 import 'xrex_portfolio_service.dart';
 import 'xrex_price_parser.dart';
@@ -28,18 +28,15 @@ class XRexCatalogAnalysisResult {
 }
 
 class XRexCatalogAnalyzerService {
-  final XRexObjectDetectionService objectDetectionService;
-  final XRexTfliteObjectDetectionService tfliteObjectDetectionService;
+  final XRexTfliteObjectDetectionServicePlatform tfliteObjectDetectionService;
   final XRexOcrService ocrService;
   final XRexVisualCatalogParser visualCatalogParser;
 
-  const XRexCatalogAnalyzerService({
-    this.objectDetectionService = const XRexObjectDetectionService(),
-    this.tfliteObjectDetectionService =
-        const XRexTfliteObjectDetectionService(),
+  XRexCatalogAnalyzerService({
+    XRexTfliteObjectDetectionServicePlatform? tfliteObjectDetectionService,
     this.ocrService = const XRexOcrService(),
     this.visualCatalogParser = const XRexVisualCatalogParser(),
-  });
+  }) : tfliteObjectDetectionService = tfliteObjectDetectionService ?? XrexTFLiteObjectDetectionService();
 
   Future<XRexCatalogAnalysisResult> analyzeImagePath(
     String imagePath, {
@@ -75,19 +72,32 @@ class XRexCatalogAnalyzerService {
   }) async {
     if (imageBytes != null && imageBytes.isNotEmpty) {
       try {
-        final tfliteRegions = await tfliteObjectDetectionService
-            .detectObjectsFromImageBytes(imageBytes);
-        if (tfliteRegions.isNotEmpty) return tfliteRegions;
+        // Use TFLite service for detection
+        final tfliteRegions = await tfliteObjectDetectionService.detectObjects(
+          imageBytes: imageBytes,
+          width: 640, // placeholder, will be read from image
+          height: 480,
+        );
+        if (tfliteRegions != null && tfliteRegions.isNotEmpty) {
+          return tfliteRegions.map((r) => XRexDetectedRegion(
+            id: 'tflite_region_${r['box']?.hashCode ?? 0}',
+            boundingBox: Rect.fromLTRB(
+              (r['box']?[0] as num?)?.toDouble() ?? 0,
+              (r['box']?[1] as num?)?.toDouble() ?? 0,
+              (r['box']?[2] as num?)?.toDouble() ?? 0,
+              (r['box']?[3] as num?)?.toDouble() ?? 0,
+            ),
+            label: r['class']?.toString() ?? 'TFLite ürün',
+            confidence: (r['score'] as num?)?.toDouble() ?? 0.0,
+          )).toList();
+        }
       } catch (_) {
         // TFLite is optional. Keep the existing ML Kit path as fallback.
       }
     }
 
-    try {
-      return objectDetectionService.detectObjectsFromImagePath(imagePath);
-    } catch (_) {
-      return const [];
-    }
+    // Fallback: return empty (ML Kit object detection not available)
+    return const [];
   }
 
   Future<XRexOcrResult> _readOcrSafely(String imagePath) async {
