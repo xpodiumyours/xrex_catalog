@@ -1,2 +1,1 @@
-export 'xrex_ocr_service_io.dart'
-    if (dart.library.js) 'xrex_ocr_service_web.dart';
+export 'xrex_ocr_service_io.dart' if (dart.library.js) 'xrex_ocr_service_web.dart';

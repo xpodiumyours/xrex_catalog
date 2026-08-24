@@ -4,27 +4,27 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
-import '../models/xrex_ocr_line.dart';
-import '../models/xrex_ocr_result.dart';
+import 'package:xrex_catalog/models/xrex_ocr_line.dart';
+import 'package:xrex_catalog/models/xrex_ocr_result.dart';
+import 'package:xrex_catalog/services/interfaces/xrex_ocr_service.dart';
 import 'xrex_image_preprocessing_service.dart';
 
-class XRexOcrService {
+class XRexOcrService implements XRexOcrServiceInterface {
   final XRexImagePreprocessingService preprocessingService;
 
   const XRexOcrService({
     this.preprocessingService = const XRexImagePreprocessingService(),
   });
 
+  @override
   Future<String> readTextFromImagePath(String imagePath) async {
     final result = await readResultFromImagePath(imagePath);
     return result.rawText;
   }
 
+  @override
   Future<XRexOcrResult> readResultFromImagePath(String imagePath) async {
-    // 1. Optimize image for OCR
     final optimizedFile = await preprocessingService.preprocessImageForOcr(File(imagePath));
-    
-    // 2. Read with ML Kit
     final inputImage = InputImage.fromFilePath(optimizedFile.path);
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
@@ -32,17 +32,9 @@ class XRexOcrService {
       final recognizedText = await textRecognizer.processImage(inputImage);
       final lines = <XRexOcrLine>[];
 
-      for (
-        var blockIndex = 0;
-        blockIndex < recognizedText.blocks.length;
-        blockIndex += 1
-      ) {
+      for (var blockIndex = 0; blockIndex < recognizedText.blocks.length; blockIndex++) {
         final block = recognizedText.blocks[blockIndex];
-        for (
-          var lineIndex = 0;
-          lineIndex < block.lines.length;
-          lineIndex += 1
-        ) {
+        for (var lineIndex = 0; lineIndex < block.lines.length; lineIndex++) {
           final line = block.lines[lineIndex];
           final text = line.text.trim();
           if (text.isEmpty) continue;
@@ -58,7 +50,6 @@ class XRexOcrService {
         }
       }
 
-      // Cleanup optimized file after use
       if (optimizedFile.path != imagePath && await optimizedFile.exists()) {
         try {
           await optimizedFile.delete();
@@ -71,6 +62,7 @@ class XRexOcrService {
     }
   }
 
+  @override
   Future<XRexOcrResult> readResultFromImageBytes(Uint8List bytes) async {
     return XRexOcrResult.empty;
   }

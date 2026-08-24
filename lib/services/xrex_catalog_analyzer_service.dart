@@ -7,13 +7,14 @@ import '../models/xrex_detected_region.dart';
 import '../models/xrex_draft_product.dart';
 import '../models/xrex_ocr_line.dart';
 import '../models/xrex_ocr_result.dart';
-import 'xrex_ocr_service.dart';
 import 'xrex_product_text_normalizer.dart';
-import 'xrex_object_detection_service.dart';
-import 'xrex_tflite_object_detection_service_platform.dart';
 import 'xrex_visual_catalog_parser.dart';
 import 'xrex_portfolio_service.dart';
 import 'xrex_price_parser.dart';
+import 'interfaces/xrex_ocr_service.dart';
+import 'interfaces/xrex_object_detection_service.dart';
+import 'xrex_ocr_service.dart';
+import 'xrex_object_detection_service.dart';
 
 class XRexCatalogAnalysisResult {
   final String rawText;
@@ -28,15 +29,17 @@ class XRexCatalogAnalysisResult {
 }
 
 class XRexCatalogAnalyzerService {
-  final XRexTfliteObjectDetectionServicePlatform tfliteObjectDetectionService;
-  final XRexOcrService ocrService;
+  final XRexOcrServiceInterface ocrService;
+  final XRexObjectDetectionServiceInterface objectDetectionService;
   final XRexVisualCatalogParser visualCatalogParser;
 
   XRexCatalogAnalyzerService({
-    XRexTfliteObjectDetectionServicePlatform? tfliteObjectDetectionService,
-    this.ocrService = const XRexOcrService(),
-    this.visualCatalogParser = const XRexVisualCatalogParser(),
-  }) : tfliteObjectDetectionService = tfliteObjectDetectionService ?? XrexTFLiteObjectDetectionService();
+    XRexObjectDetectionServiceInterface? objectDetectionService,
+    XRexOcrServiceInterface? ocrService,
+    XRexVisualCatalogParser? visualCatalogParser,
+  }) : objectDetectionService = objectDetectionService ?? const XRexTfliteObjectDetectionService(),
+       ocrService = ocrService ?? const XRexOcrService(),
+       visualCatalogParser = visualCatalogParser ?? const XRexVisualCatalogParser();
 
   Future<XRexCatalogAnalysisResult> analyzeImagePath(
     String imagePath, {
@@ -72,31 +75,18 @@ class XRexCatalogAnalyzerService {
   }) async {
     if (imageBytes != null && imageBytes.isNotEmpty) {
       try {
-        // Use TFLite service for detection
-        final tfliteRegions = await tfliteObjectDetectionService.detectObjects(
+        final detectedRegions = await objectDetectionService.detectObjects(
           imageBytes: imageBytes,
-          width: 640, // placeholder, will be read from image
+          width: 640,
           height: 480,
         );
-        if (tfliteRegions != null && tfliteRegions.isNotEmpty) {
-          return tfliteRegions.map((r) => XRexDetectedRegion(
-            id: 'tflite_region_${r['box']?.hashCode ?? 0}',
-            boundingBox: Rect.fromLTRB(
-              (r['box']?[0] as num?)?.toDouble() ?? 0,
-              (r['box']?[1] as num?)?.toDouble() ?? 0,
-              (r['box']?[2] as num?)?.toDouble() ?? 0,
-              (r['box']?[3] as num?)?.toDouble() ?? 0,
-            ),
-            label: r['class']?.toString() ?? 'TFLite ürün',
-            confidence: (r['score'] as num?)?.toDouble() ?? 0.0,
-          )).toList();
+        if (detectedRegions.isNotEmpty) {
+          return detectedRegions;
         }
       } catch (_) {
-        // TFLite is optional. Keep the existing ML Kit path as fallback.
+        // Object detection failed, return empty
       }
     }
-
-    // Fallback: return empty (ML Kit object detection not available)
     return const [];
   }
 
@@ -115,7 +105,6 @@ class XRexCatalogAnalyzerService {
     final rawProducts = <XRexDraftProduct>[];
     final usedOcrKeys = <String>{};
 
-    // 1. Map OCR lines to detected visual regions based on horizontal/vertical coordinates
     for (var i = 0; i < regions.length; i++) {
       final region = regions[i];
       final regionId = region.id;
@@ -126,7 +115,6 @@ class XRexCatalogAnalyzerService {
             final overlap = _horizontalOverlap(region.boundingBox, lineBox);
             if (overlap <= 0) return false;
 
-            // In retail, product names/prices are inside or very close to the visual region
             final isInside =
                 lineBox.top >= region.boundingBox.top - 50 &&
                 lineBox.bottom <= region.boundingBox.bottom + 150;
@@ -178,7 +166,6 @@ class XRexCatalogAnalyzerService {
           );
         }
       } else {
-        // No visual name/price parsed from coordinates. Infer name from lines or label
         final nonNoiseText = matchedOcr
             .where(
               (line) => line.text.trim().isNotEmpty && !_isNoiseLine(line.text),
@@ -224,7 +211,6 @@ class XRexCatalogAnalyzerService {
       }
     }
 
-    // 2. Process remaining unpaired OCR lines
     final remainingOcr =
         ocrLines.where((line) {
           return !usedOcrKeys.contains('${line.blockIndex}:${line.lineIndex}');
@@ -262,10 +248,8 @@ class XRexCatalogAnalyzerService {
       }
     }
 
-    // 2.5. Match and enrich with product portfolio
     _enrichProductsWithPortfolio(rawProducts);
 
-    // 3. Deduplicate and merge products (Benzerleri Birleştir)
     final mergedProducts = <XRexDraftProduct>[];
     final seenNormalizedNames = <String, XRexDraftProduct>{};
 
@@ -298,7 +282,6 @@ class XRexCatalogAnalyzerService {
       }
     }
 
-    // Assign sequence numbers sourceIndex (#1, #2, etc.) to final items
     for (var k = 0; k < mergedProducts.length; k++) {
       mergedProducts[k].sourceIndex = '#${k + 1}';
     }
@@ -407,11 +390,9 @@ class XRexCatalogAnalyzerService {
       final prod = rawProducts[i];
       if (prod.name.isEmpty) continue;
 
-      // 1. Keep the original raw OCR text separately
       prod.rawOcrText = prod.name;
-      prod.isApproved = false; // Requires user confirmation
+      prod.isApproved = false;
 
-      // Get nearest 3 suggestions
       final matches = portfolioService.findTopMatches(prod.name, limit: 3);
       if (matches.isNotEmpty) {
         final bestMatch = matches.first;
@@ -422,12 +403,10 @@ class XRexCatalogAnalyzerService {
         prod.suggestions = matches.map((m) => m.product).toList();
 
         if (confidence >= 0.85) {
-          // Rule 2 & 3: Strong Match (Score >= 85)
           prod.name = bestProd.name;
           prod.category = bestProd.category;
           prod.description = bestProd.description;
 
-          // If price is missing or not parsed, default to portfolio price
           if (prod.price.isEmpty && bestProd.price.isNotEmpty) {
             prod.price = bestProd.price;
             final parsedAmount = XRexPriceParser.parseAmount(bestProd.price);
@@ -443,7 +422,6 @@ class XRexCatalogAnalyzerService {
           ];
           prod.origin = 'portfolio_matched_strong';
         } else if (confidence >= 0.60) {
-          // Rule 4: Weak/Ambiguous Match (Score 60-85)
           prod.name = 'E\u{015f}le\u{015f}me kontrol\u{00fc} gerekli';
           prod.category = bestProd.category;
           prod.description = 'E\u{015f}le\u{015f}me kontrol\u{00fc} gerekli. En yak\u{0131}n e\u{015f}le\u{015f}en portf\u{00f6}y \u{00fc}r\u{00fc}n\u{00fc}n\u{00fc} listeden se\u{00e7}ebilirsiniz.';
@@ -455,7 +433,6 @@ class XRexCatalogAnalyzerService {
           ];
           prod.origin = 'portfolio_matched_weak';
         } else {
-          // Rule 5: No Match (Score < 60)
           prod.name = 'Bilinmeyen \u{00fc}r\u{00fc}n';
           prod.category = 'Genel';
           prod.description = 'Bu \u{00fc}r\u{00fc}n portf\u{00f6}yde bulunamad\u{0131} veya e\u{015f}le\u{015f}me skoru \u{00e7}ok d\u{00fc}\u{015f}\u{00fc}k. L\u{00fc}tfen elle d\u{00fc}zenleyin.';
@@ -467,7 +444,6 @@ class XRexCatalogAnalyzerService {
           prod.origin = 'unmatched';
         }
       } else {
-        // No matches found at all
         prod.name = 'Bilinmeyen \u{00fc}r\u{00fc}n';
         prod.category = 'Genel';
         prod.description = 'Bu \u{00fc}r\u{00fc}n portf\u{00f6}yde bulunamad\u{0131}. L\u{00fc}tfen elle d\u{00fc}zenleyin.';

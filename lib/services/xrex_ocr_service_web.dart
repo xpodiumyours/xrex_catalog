@@ -8,18 +8,22 @@ import 'dart:ui';
 
 import '../models/xrex_ocr_line.dart';
 import '../models/xrex_ocr_result.dart';
+import 'interfaces/xrex_ocr_service.dart';
 
-class XRexOcrService {
+class XRexOcrService implements XRexOcrServiceInterface {
   const XRexOcrService();
 
+  @override
   Future<String> readTextFromImagePath(String imagePath) async {
     return '';
   }
 
+  @override
   Future<XRexOcrResult> readResultFromImagePath(String imagePath) async {
     return XRexOcrResult.empty;
   }
 
+  @override
   Future<XRexOcrResult> readResultFromImageBytes(Uint8List bytes) async {
     final base64Str = base64Encode(bytes);
     final dataUrl = 'data:image/jpeg;base64,$base64Str';
